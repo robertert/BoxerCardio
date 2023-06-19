@@ -11,11 +11,11 @@ import {
 import Colors from "../../constants/colors";
 import Header from "../UI/Header";
 import ButtonPrim from "../UI/ButtonPrim";
-import { useNavigation } from "@react-navigation/native";
-import { AuthContext } from "../../store/auth-context";
-import AppLoading from 'expo-app-loading';
 import { authenticate } from "../../util/auth";
-import * as SplashScreen from 'expo-splash-screen';
+import * as SplashScreen from "expo-splash-screen";
+import { AuthContext } from "../../store/auth-context";
+import { useNavigation } from "@react-navigation/native";
+
 
 function AuthForm() {
   const [username, setUsername] = useState();
@@ -27,47 +27,43 @@ function AuthForm() {
   const [invalidPassword, setInvalidPassword] = useState(false);
   const [invalidConfirmPassword, setInvalidConfirmPassword] = useState(false);
   const [toggleScreen, setToggleScreen] = useState(false);
-  const [message, setMessage] = useState("");
-  const [isLoading,setIsLoading] = useState(false);
-
-
-  const navigation = useNavigation();
+  const [isLoading, setIsLoading] = useState(false);
 
   const authCtx = useContext(AuthContext);
-
-
+  const navigation = useNavigation();
   
+
   const usernameChangeHandler = (enteredUsername) => {
     setInvaildUsername(false);
     setUsername(enteredUsername);
-    setMessage("");
+    authCtx.changeMessage("");
   };
   const emailChangeHandler = (enteredEmail) => {
     setInvalidEmail(false);
     setEmail(enteredEmail);
-    setMessage("");
+    authCtx.changeMessage("");
   };
   const passwordChangeHandler = (enteredPassword) => {
     setInvalidPassword(false);
     setPassword(enteredPassword);
-    setMessage("");
+    authCtx.changeMessage("");
   };
 
   const confirmPasswordChangeHandler = (enteredConfirmPassword) => {
     setInvalidConfirmPassword(false);
     setConfirmPassword(enteredConfirmPassword);
-    setMessage("");
+    authCtx.changeMessage("");
   };
 
   function isAlphanumeric(str) {
     return /^[a-zA-Z0-9]+$/.test(str);
   }
 
-  async function validateRegister() {
+  function validateRegister() {
     if (username.trim().length < 6 || !isAlphanumeric(username)) {
       // dodac czy unikalna
       setInvaildUsername(true);
-      setMessage(
+      authCtx.changeMessage(
         "Username should be at least 6 characters long and contain only letters and numbers"
       );
       return false;
@@ -78,29 +74,22 @@ function AuthForm() {
       // dodac czy email jest zajety
     ) {
       setInvalidEmail(true);
-      setMessage("Wrong email");
+      authCtx.changeMessage("Wrong email");
       return false;
     }
     if (password.trim().length < 8) {
       setInvalidPassword(true);
-      setMessage("Password should contain at least 8 characters");
+      authCtx.changeMessage("Password should contain at least 8 characters");
       return false;
     }
     if (password.trim() != confirmPassword.trim()) {
       setInvalidConfirmPassword(true);
-      setMessage("Password don't match");
+      authCtx.changeMessage("Password don't match");
       return false;
     }
-    
+
     return true;
   }
-
-  function validateLogin(){
-    if(username.trim().length > 6 && password.trim().length > 8 && isAlphanumeric(username)){
-      
-    }
-  }
-
 
 
   function toggleScreenPressHandler() {
@@ -113,29 +102,40 @@ function AuthForm() {
     setInvalidConfirmPassword(false);
     setInvalidEmail(false);
     setInvalidPassword(false);
+    authCtx.changeMessage('');
   }
 
-   async function submitRegisterHandler() {
+  function resetPasswordHandler(){
+    navigation.navigate('resetPassword');
+  }
+
+
+  async function submitRegisterHandler() {
     if (validateRegister()) {
       setIsLoading(true);
-      const token = await authenticate(email,password);
-      authCtx.authenticate(token);
+      await authenticate("signIn",email, password);
       setIsLoading(false);
-      navigation.replace("authenticated");
     }
   }
-  SplashScreen.preventAutoHideAsync();
-  if(!isLoading){
-    SplashScreen.hideAsync();
+
+
+  async function logInHandler(){
+      setIsLoading(true);
+      await authenticate("logIn",email,password);
+      setIsLoading(false);
   }
 
+  SplashScreen.preventAutoHideAsync();
+  if (!isLoading) {
+    SplashScreen.hideAsync();
+  }
 
   if (toggleScreen) {
     return (
       <View style={styles.rootContainer}>
-          <ScrollView style={styles.scrollview}>
-            <View style={styles.innerContainer}>
-            <Header />
+        <ScrollView style={styles.scrollview}>
+          <View style={styles.innerContainer}>
+            <Header settings={false} back={false}/>
             <View>
               <Image
                 source={require("../../assets/icon.png")}
@@ -169,7 +169,7 @@ function AuthForm() {
                 value={confirmPassword}
               />
             </View>
-            <Text style={styles.invalidMessage}>{message}</Text>
+            <Text style={styles.invalidMessage}>{authCtx.message}</Text>
             <ButtonPrim text="Sign up" onPress={submitRegisterHandler} />
             <Pressable
               onPress={toggleScreenPressHandler}
@@ -179,17 +179,16 @@ function AuthForm() {
                 Already have an account? Log in
               </Text>
             </Pressable>
-            
-            </View>
-          </ScrollView>
+          </View>
+        </ScrollView>
       </View>
     );
   } else {
     return (
       <View style={styles.rootContainer}>
-          <ScrollView style={styles.scrollview}>
-            <View style={styles.innerContainer}>
-            <Header />
+        <ScrollView style={styles.scrollview}>
+          <View style={styles.innerContainer}>
+            <Header settings={false} back={false}/>
             <View>
               <Image
                 source={require("../../assets/icon.png")}
@@ -197,11 +196,11 @@ function AuthForm() {
               />
             </View>
             <View style={styles.imputContainer}>
-              <Text style={styles.label}>Username</Text>
+              <Text style={styles.label}>Email</Text>
               <TextInput
-                style={[styles.input, invalidUsername && styles.invalid]}
-                onChangeText={usernameChangeHandler}
-                value={username}
+                style={[styles.input, invalidEmail && styles.invalid]}
+                onChangeText={emailChangeHandler}
+                value={email}
               />
               <Text style={styles.label}>Password</Text>
               <TextInput
@@ -210,17 +209,26 @@ function AuthForm() {
                 value={password}
               />
             </View>
-            <ButtonPrim text="Log in" />
+            <ButtonPrim text="Log in" onPress={logInHandler}/>
+            <Text style={styles.invalidMessage}>{authCtx.message}</Text>
+            <Pressable
+              onPress={resetPasswordHandler}
+              style={({ pressed }) => pressed && { opacity: 0.4 }}
+            >
+              <Text style={[styles.label, { marginTop: 30 }]}>
+                Forgot your password? Click here
+              </Text>
+            </Pressable>
             <Pressable
               onPress={toggleScreenPressHandler}
               style={({ pressed }) => pressed && { opacity: 0.4 }}
             >
-              <Text style={[styles.label, { marginTop: 30 }]}>
+              <Text style={[styles.label, { marginTop: 5 }]}>
                 Don't have an account? Create a new one
               </Text>
             </Pressable>
-            </View>
-          </ScrollView>
+          </View>
+        </ScrollView>
       </View>
     );
   }

@@ -1,11 +1,11 @@
-import { View, Text, StyleSheet, SafeAreaView } from "react-native";
+import { View, Text, StyleSheet, SafeAreaView, Pressable } from "react-native";
 import { useCallback } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "../../constants/colors";
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
 
-function Header() {
+function Header({ settings, back, onPress }) {
   const [fontsLoaded] = useFonts({
     RubikMono: require("../../assets/fonts/RubikMonoOne-Regular.ttf"),
   });
@@ -19,12 +19,19 @@ function Header() {
   if (!fontsLoaded) {
     return null;
   }
-
   return (
     <>
       <View style={styles.rootContainer} onLayout={onLayoutRootView}>
         <Text style={styles.text}>GYMBOXER</Text>
-        <Ionicons name="settings-sharp" size={24} color="white" />
+        {back && (
+          <Pressable
+            onPress={onPress}
+            style={({ pressed }) => pressed && styles.pressed}
+          >
+            <Ionicons name="chevron-back-outline" size={24} color="white" />
+          </Pressable>
+        )}
+        {settings && <Ionicons name="settings-sharp" size={24} color="white" />}
       </View>
     </>
   );
@@ -46,7 +53,10 @@ const styles = StyleSheet.create({
   text: {
     color: Colors.primary100,
     fontSize: 30,
-    
-    fontFamily: 'RubikMono',
+
+    fontFamily: "RubikMono",
+  },
+  pressed: {
+    opacity: 0.5,
   },
 });
