@@ -16,7 +16,6 @@ import * as SplashScreen from "expo-splash-screen";
 import { AuthContext } from "../../store/auth-context";
 import { useNavigation } from "@react-navigation/native";
 
-
 function AuthForm() {
   const [username, setUsername] = useState();
   const [email, setEmail] = useState();
@@ -31,7 +30,6 @@ function AuthForm() {
 
   const authCtx = useContext(AuthContext);
   const navigation = useNavigation();
-  
 
   const usernameChangeHandler = (enteredUsername) => {
     setInvaildUsername(false);
@@ -91,7 +89,6 @@ function AuthForm() {
     return true;
   }
 
-
   function toggleScreenPressHandler() {
     setToggleScreen((prev) => !prev);
     setUsername("");
@@ -102,27 +99,25 @@ function AuthForm() {
     setInvalidConfirmPassword(false);
     setInvalidEmail(false);
     setInvalidPassword(false);
-    authCtx.changeMessage('');
+    authCtx.changeMessage("");
   }
 
-  function resetPasswordHandler(){
-    navigation.navigate('resetPassword');
+  function resetPasswordHandler() {
+    navigation.navigate("resetPassword");
   }
-
 
   async function submitRegisterHandler() {
     if (validateRegister()) {
       setIsLoading(true);
-      await authenticate("signIn",email, password);
+      await authenticate("signIn", email, password, authCtx);
       setIsLoading(false);
     }
   }
 
-
-  async function logInHandler(){
-      setIsLoading(true);
-      await authenticate("logIn",email,password);
-      setIsLoading(false);
+  async function logInHandler() {
+    setIsLoading(true);
+    await authenticate("logIn", email, password, authCtx);
+    setIsLoading(false);
   }
 
   SplashScreen.preventAutoHideAsync();
@@ -135,7 +130,7 @@ function AuthForm() {
       <View style={styles.rootContainer}>
         <ScrollView style={styles.scrollview}>
           <View style={styles.innerContainer}>
-            <Header settings={false} back={false}/>
+            <Header settings={false} back={false} />
             <View>
               <Image
                 source={require("../../assets/icon.png")}
@@ -188,7 +183,7 @@ function AuthForm() {
       <View style={styles.rootContainer}>
         <ScrollView style={styles.scrollview}>
           <View style={styles.innerContainer}>
-            <Header settings={false} back={false}/>
+            <Header settings={false} back={false} />
             <View>
               <Image
                 source={require("../../assets/icon.png")}
@@ -209,8 +204,8 @@ function AuthForm() {
                 value={password}
               />
             </View>
-            <ButtonPrim text="Log in" onPress={logInHandler}/>
             <Text style={styles.invalidMessage}>{authCtx.message}</Text>
+            <ButtonPrim text="Log in" onPress={logInHandler} />
             <Pressable
               onPress={resetPasswordHandler}
               style={({ pressed }) => pressed && { opacity: 0.4 }}

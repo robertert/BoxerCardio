@@ -1,21 +1,19 @@
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword,signInWithCustomToken } from "firebase/auth";
 import { auth } from "../firebaseConfig";
 import { Alert } from "react-native";
-import { useContext } from "react";
-import { AuthContext } from "../store/auth-context";
 
 
 
-export async function authenticate(mode, email, password) {
-    const authCtx = useContext(AuthContext);
+
+export async function authenticate(mode, email, password,authCtx) {
   if (mode === "signIn") {
-    return await signIn(email, password);
+    return await signIn(email, password,authCtx);
   } else {
-    return await logIn(email,password);
+    return await logIn(email,password,authCtx);
   }
 }
 
-async function signIn(email, password) {
+async function signIn(email, password,authCtx) {
   try {
     const response = await createUserWithEmailAndPassword(
       auth,
@@ -34,7 +32,8 @@ async function signIn(email, password) {
     console.log(error.code);    
   }
 }
-async function logIn(email,password) {
+async function logIn(email,password,authCtx) {
+  
     try {
         const response = await signInWithEmailAndPassword(auth,email,password);
         return response._tokenResponse.idToken;
@@ -42,7 +41,9 @@ async function logIn(email,password) {
         if(e.code === 'auth/wrong-password'){
             authCtx.changeMessage("Wrong password");
         }
-        Alert.alert("There was an error", "Please try again");
+        else{
+          Alert.alert("There was an error", "Please try again");
+        }
         console.log(e.message);
     }
 }

@@ -22,13 +22,13 @@ function ResetPasswordScreen({ navigation }) {
      await sendPasswordResetEmail(auth,email);
       navigation.navigate("auth");
     } catch (error) {
-        if(error.code === ''){
+        if(error.code === 'auth/invalid-email'){
             setMessage('Invalid email');
         }
         else{
             setMessage("Try again later");
         }
-        console.log(error);
+        //console.log(error.code);
     }
   };
 
