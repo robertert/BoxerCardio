@@ -2,14 +2,34 @@ import { View, StyleSheet, Text, Image, Pressable } from "react-native";
 import Colors from "../constants/colors";
 import { Entypo } from "@expo/vector-icons";
 import { useState } from "react";
+import { AntDesign } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
+import {
+  Menu,
+  MenuOption,
+  MenuProvider,
+  MenuTrigger,
+  MenuOptions,
+} from "react-native-popup-menu";
 
-function Post({ name }) {
+function Divider() {
+  return (
+    <View style={styles.divider}>
+    </View>
+  );
+}
 
-    const [info,setInfo] = useState(false);
+function Post({ name,onShare }) {
+  const [isLiked, setIsLiked] = useState(false);
 
-    function infoHandler(){
-        setInfo(true);
-    }
+  function likeHandler() {
+    setIsLiked((prev) => !prev);
+  }
+  function commentHandler() {}
+  function shareHandler() {
+    onShare();
+  }
 
   return (
     <View style={styles.root}>
@@ -19,15 +39,44 @@ function Post({ name }) {
           <Text style={styles.name}>{name}</Text>
         </View>
         <View style={styles.right}>
-          <Pressable onPress={infoHandler}>
-            <Entypo name="dots-three-vertical" size={30} color="white" />
-          </Pressable>
+          <Menu>
+            <MenuTrigger>
+              <Entypo name="dots-three-vertical" size={30} color="white" />
+            </MenuTrigger>
+            <MenuOptions
+              customStyles={{
+                optionsContainer: styles.info,
+                optionText: styles.infoText,
+                optionsWrapper: styles.infoWraper
+              }}
+            >
+              <MenuOption onSelect={() => alert(`Report`)} text="Report" />
+              <Divider/>
+              <MenuOption onSelect={() => alert(`Removed friends`)} text="Remove friend" />
+            </MenuOptions>
+          </Menu>
         </View>
       </View>
-      <View style={styles.content}>
-        {info && <View style={styles.info}></View>}
+      <View style={styles.content}></View>
+      <View style={styles.footer}>
+        <Pressable onPress={likeHandler}>
+          <AntDesign
+            name={!isLiked ? "hearto" : "heart"}
+            size={32}
+            color="white"
+          />
+        </Pressable>
+        <Pressable onPress={commentHandler}>
+          <MaterialCommunityIcons
+            name="comment-outline"
+            size={32}
+            color="white"
+          />
+        </Pressable>
+        <Pressable onPress={shareHandler}>
+          <Feather name="share" size={32} color="white" />
+        </Pressable>
       </View>
-      <View style={styles.footer}></View>
     </View>
   );
 }
@@ -52,7 +101,6 @@ const styles = StyleSheet.create({
   left: {
     flexDirection: "row",
     alignItems: "center",
-    
   },
   content: {
     flex: 4,
@@ -64,6 +112,9 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     flex: 1,
     backgroundColor: Colors.accent500_80,
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
   },
   name: {
     marginHorizontal: 10,
@@ -75,10 +126,25 @@ const styles = StyleSheet.create({
     width: 45,
     borderRadius: 22.5,
   },
-  info:{
+  info: {
     width: 200,
-    height: 300,
+    height: 100,
     backgroundColor: Colors.primary500,
     borderRadius: 20,
-  }
+    marginTop: 40,
+  },
+  infoText: {
+    color: Colors.primary100,
+    fontSize: 20,
+    textAlign: "center",
+  },
+  infoWraper: {
+    paddingHorizontal: 15,
+    paddingVertical: 15,
+  },
+  divider:{
+    backgroundColor: Colors.primary100_30,
+    width: "100%",
+    height : 1,
+  },
 });

@@ -28,6 +28,7 @@ function Authenticated() {
           height: 70,
           alignItems: "center",
           justifyContent: "flex-end",
+          display: "flex"
         },
       }}
     >
