@@ -1,5 +1,5 @@
 import { View, StyleSheet, Text, Image, Pressable } from "react-native";
-import Colors from "../constants/colors";
+import Colors from "../../constants/colors";
 import { Entypo } from "@expo/vector-icons";
 import { useState } from "react";
 import { AntDesign } from "@expo/vector-icons";
@@ -8,10 +8,10 @@ import { Feather } from "@expo/vector-icons";
 import {
   Menu,
   MenuOption,
-  MenuProvider,
   MenuTrigger,
   MenuOptions,
 } from "react-native-popup-menu";
+import { useNavigation } from "@react-navigation/native";
 
 function Divider() {
   return (
@@ -20,13 +20,16 @@ function Divider() {
   );
 }
 
-function Post({ name,onShare }) {
+function Post({ name,onShare,id }) {
   const [isLiked, setIsLiked] = useState(false);
+  const navigation = useNavigation();
 
   function likeHandler() {
     setIsLiked((prev) => !prev);
   }
-  function commentHandler() {}
+  function commentHandler() {
+    navigation.getParent().navigate('comment');
+  }
   function shareHandler() {
     onShare();
   }
@@ -35,7 +38,7 @@ function Post({ name,onShare }) {
     <View style={styles.root}>
       <View style={styles.head}>
         <View style={styles.left}>
-          <Image source={require("../assets/icon.png")} style={styles.image} />
+          <Image source={require("../../assets/icon.png")} style={styles.image} />
           <Text style={styles.name}>{name}</Text>
         </View>
         <View style={styles.right}>
@@ -50,7 +53,7 @@ function Post({ name,onShare }) {
                 optionsWrapper: styles.infoWraper
               }}
             >
-              <MenuOption onSelect={() => alert(`Report`)} text="Report" />
+              <MenuOption onSelect={()=>navigation.getParent().navigate('report')} text="Report" />
               <Divider/>
               <MenuOption onSelect={() => alert(`Removed friends`)} text="Remove friend" />
             </MenuOptions>

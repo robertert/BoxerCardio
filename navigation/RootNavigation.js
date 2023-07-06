@@ -1,11 +1,14 @@
 import { auth } from "../firebaseConfig";
 import { StatusBar } from "expo-status-bar";
-import { SafeAreaView, StyleSheet } from "react-native";
+import { StyleSheet } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
-import { useEffect, useContext} from "react";
+import { useEffect, useContext } from "react";
 import { AuthContext } from "../store/auth-context";
-import Authenticated from "./Authenticated";
 import AuthStack from "./AuthStack";
+import Colors from "../constants/colors";
+
+import { View } from "react-native";
+import MainStack from "./MainStack";
 
 function RootNavigation() {
   const authCtx = useContext(AuthContext);
@@ -21,13 +24,16 @@ function RootNavigation() {
   }, []);
 
   return (
-    <SafeAreaView style={styles.root}>
+    <View
+        style={styles.root}
+      >
+    <NavigationContainer>
       <StatusBar style="light" />
-      <NavigationContainer>
-        {authCtx.isAuth && <Authenticated />}
-        {!authCtx.isAuth && <AuthStack />}
-      </NavigationContainer>
-    </SafeAreaView>
+      
+        {authCtx.isAuth && <MainStack />}
+        {!authCtx.isAuth && <AuthStack />} 
+    </NavigationContainer>
+    </View>
   );
 }
 
@@ -36,5 +42,6 @@ export default RootNavigation;
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    backgroundColor: Colors.primary500,
   },
 });

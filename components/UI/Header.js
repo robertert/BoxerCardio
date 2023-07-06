@@ -4,8 +4,10 @@ import { Ionicons } from "@expo/vector-icons";
 import Colors from "../../constants/colors";
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 function Header({ settings, back, onPress }) {
+  const insets = useSafeAreaInsets();
   const [fontsLoaded] = useFonts({
     RubikMono: require("../../assets/fonts/RubikMonoOne-Regular.ttf"),
   });
@@ -21,7 +23,13 @@ function Header({ settings, back, onPress }) {
   }
   return (
     <>
-      <View style={styles.rootContainer} onLayout={onLayoutRootView}>
+      <View
+        style={[
+          styles.rootContainer,
+          { paddingTop: insets.top + 10, height: 55 + insets.top },
+        ]}
+        onLayout={onLayoutRootView}
+      >
         <Text style={styles.text}>GYMBOXER</Text>
         {back && (
           <Pressable
@@ -41,14 +49,13 @@ export default Header;
 
 const styles = StyleSheet.create({
   rootContainer: {
-    paddingTop: 20,
     paddingHorizontal: 15,
     flexDirection: "row",
-    backgroundColor: Colors.accent500_80,
+    backgroundColor: Colors.accent700,
     width: "100%",
-    height: 70,
     alignItems: "center",
     justifyContent: "space-between",
+    paddingBottom: 5,
   },
   text: {
     color: Colors.primary100,

@@ -7,29 +7,36 @@ import FriendsScreen from "../screens/FriendsScreen";
 import NfcScreen from "../screens/NfcScreen";
 import NotificationScreen from "../screens/NotificationScreen";
 import ProfileScreen from "../screens/ProfileScreen";
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Platform } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 const Tab = createBottomTabNavigator();
 
 function Authenticated() {
+  const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator
+      id="Tabs"
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: Colors.primary100,
         tabBarInactiveTintColor: Colors.primary100_30,
         tabBarShowLabel: false,
         tabBarBackground: () => (
-          <View style={styles.tabBar}>
+          <View style={[styles.tabBar,{height: insets.bottom+70,paddingBottom: insets.bottom}]}>
             <View style={styles.tabBarInner} />
           </View>
         ),
         tabBarStyle: {
+          marginBottom: Platform.OS !== "android" ? insets.bottom-8: insets.bottom,
           height: 70,
           alignItems: "center",
-          justifyContent: "flex-end",
-          display: "flex"
+          justifyContent: "center",
+          borderTopWidth: 0,
         },
+        tabBarIconStyle: {
+          paddingBottom: Platform.OS === "android" && 30
+        }
       }}
     >
       <Tab.Screen
@@ -40,7 +47,7 @@ function Authenticated() {
             <View
               style={[
                 {
-                  height: 48,
+                  height: 80,
                   paddingBottom: 3,
                   width: 58,
                   margin: 0,
@@ -57,6 +64,12 @@ function Authenticated() {
             </View>
           ),
         }}
+        listeners={({ navigation}) => ({
+          tabPress: (e) => {
+            e.preventDefault();
+            navigation.navigate('home');
+          },
+        })}
       />
       <Tab.Screen
         name="friends"
@@ -66,8 +79,8 @@ function Authenticated() {
             <View
               style={[
                 {
-                  height: 48,
-                  paddingBottom: 3,
+                  height: 80,
+                  paddingBottom: 0,
                   width: 58,
                   margin: 0,
                   justifyContent: "flex-end",
@@ -92,8 +105,8 @@ function Authenticated() {
             <View
               style={[
                 {
-                  height: 48,
-                  paddingBottom: 3,
+                  height: 80,
+                  paddingBottom: 5,
                   width: 58,
                   justifyContent: "flex-end",
                   alignItems: "center",
@@ -104,7 +117,11 @@ function Authenticated() {
                 },
               ]}
             >
-              <MaterialCommunityIcons name="cellphone-nfc" size={40} color={color} />
+              <MaterialCommunityIcons
+                name="cellphone-nfc"
+                size={40}
+                color={color}
+              />
             </View>
           ),
         }}
@@ -117,8 +134,8 @@ function Authenticated() {
             <View
               style={[
                 {
-                  height: 48,
-                  paddingBottom: 3,
+                  height: 80,
+                  paddingBottom: 5,
                   width: 58,
                   margin: 0,
                   justifyContent: "flex-end",
@@ -143,8 +160,8 @@ function Authenticated() {
             <View
               style={[
                 {
-                  height: 48,
-                  paddingBottom: 3,
+                  height: 80,
+                  paddingBottom: 5,
                   width: 58,
                   margin: 0,
                   justifyContent: "flex-end",

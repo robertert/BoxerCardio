@@ -130,7 +130,7 @@ function AuthForm() {
       <View style={styles.rootContainer}>
         <ScrollView style={styles.scrollview}>
           <View style={styles.innerContainer}>
-            <Header settings={false} back={false} />
+            
             <View>
               <Image
                 source={require("../../assets/icon.png")}
@@ -183,7 +183,7 @@ function AuthForm() {
       <View style={styles.rootContainer}>
         <ScrollView style={styles.scrollview}>
           <View style={styles.innerContainer}>
-            <Header settings={false} back={false} />
+          
             <View>
               <Image
                 source={require("../../assets/icon.png")}
