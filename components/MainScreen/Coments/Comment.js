@@ -3,16 +3,23 @@ import { View, StyleSheet, Image, Text, Pressable } from "react-native";
 import Colors from "../../../constants/colors";
 import CommentList from "./CommentList";
 
-function Comment({ content, id, name, photoUrl, responses }) {
+function Comment({ content, id, name, photoUrl, responses, onReply, level }) {
   const [isResponse, setIsResponse] = useState(false);
-  const [showResponse,setShowResponse] = useState(false);
+  const [showResponse, setShowResponse] = useState(false);
+  const [showReply, setShowReply] = useState(true);
   useEffect(() => {
     if (responses) {
       setIsResponse(responses?.length !== 0);
-    } 
+    }
+    if (level >= 3) {
+      setIsResponse(false);
+      setShowReply(false);
+    }
   }, []);
 
-  function replyHandler() {}
+  function replyHandler() {
+    onReply(id,name);
+  }
   function answerShowHandler() {
     setShowResponse(true);
   }
@@ -31,20 +38,27 @@ function Comment({ content, id, name, photoUrl, responses }) {
           <Text style={styles.userName}>{name}</Text>
           <Text style={styles.content}>{content}</Text>
           <View style={styles.footer}>
-            {(isResponse&&!showResponse) && (
+            {isResponse && !showResponse && (
               <Pressable onPress={answerShowHandler}>
                 <Text style={styles.footerText}>Show answers</Text>
               </Pressable>
             )}
-            <Pressable onPress={replyHandler}>
-              <Text style={styles.footerText}>Reply</Text>
-            </Pressable>
+            {showReply && (
+              <Pressable onPress={replyHandler}>
+                <Text style={styles.footerText}>Reply</Text>
+              </Pressable>
+            )}
           </View>
         </View>
       </View>
       {showResponse && (
         <View style={styles.responses}>
-          <CommentList responses={responses} onHide={answerHideHandler}/>
+          <CommentList
+            responses={responses}
+            onHide={answerHideHandler}
+            onReply={onReply}
+            level={level + 1}
+          />
         </View>
       )}
     </View>
@@ -55,7 +69,6 @@ export default Comment;
 
 const styles = StyleSheet.create({
   root: {
-    width: "100%",
     marginHorizontal: 20,
     flexDirection: "column",
     marginTop: 15,

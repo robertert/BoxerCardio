@@ -28,7 +28,7 @@ function Post({ name,onShare,id }) {
     setIsLiked((prev) => !prev);
   }
   function commentHandler() {
-    navigation.getParent().navigate('comment');
+    navigation.getParent().navigate('comment',{id: id});
   }
   function shareHandler() {
     onShare();

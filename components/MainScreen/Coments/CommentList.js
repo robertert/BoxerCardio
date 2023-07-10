@@ -2,7 +2,7 @@ import Comment from "./Comment";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import Colors from "../../../constants/colors";
 
-function CommentList({ responses, onHide }) {
+function CommentList({ responses, onHide, onReply, level }) {
   function answerHideHandler() {
     onHide();
   }
@@ -11,7 +11,13 @@ function CommentList({ responses, onHide }) {
     <View style={{ flex: 1 }}>
       {responses.map((item) => {
         return (
-          <Comment name={item.name} content={item.content} responses={item.responses} />
+          <Comment
+            name={item.name}
+            content={item.content}
+            responses={item.responses}
+            onReply={onReply}
+            level={level}
+          />
         );
       })}
       <Pressable onPress={answerHideHandler}>
@@ -30,5 +36,5 @@ const styles = StyleSheet.create({
     marginRight: 20,
     marginLeft: 30,
     marginTop: 10,
-},
+  },
 });

@@ -2,7 +2,6 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   ActivityIndicator,
 } from "react-native";
 import { auth } from "../firebaseConfig";
@@ -75,7 +74,7 @@ function MainScreen({ navigation }) {
           collection(db, "posts"),
           orderBy("userName"),
           startAfter(last ? last : 1),
-          limit(0) //   ZMIENIĆ POŹNIEJ NA DOBRZE i setERRROT TEŻ  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+          limit(10) //   ZMIENIĆ POŹNIEJ NA DOBRZE i setERRROT TEŻ  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         )
       );
       last = posts.docs[posts.docs.length - 1];
@@ -128,7 +127,7 @@ function MainScreen({ navigation }) {
       {!isErrorRender ? (
         <FlashList
           ref={ref}
-          data={DUMMY_LIST}
+          data={flattenData}
           renderItem={renderListHandler}
           keyExtractor={(item) => item.id}
           estimatedItemSize={330}
