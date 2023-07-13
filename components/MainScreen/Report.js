@@ -12,9 +12,13 @@ function Report() {
   }
 
   return (
+    <View style={styles.root}>
     <Pressable onPress={backHandler}>
       <View style={styles.back}></View>
     </Pressable>
+    
+
+    </View>
   );
 }
 

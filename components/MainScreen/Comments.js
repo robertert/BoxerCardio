@@ -7,7 +7,7 @@ import {
   TextInput,
   Platform,
   FlatList,
-  ActivityIndicator
+  ActivityIndicator,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -23,7 +23,7 @@ import {
 import Colors, { DUMMY_COMENTS } from "../../constants/colors";
 import Comment from "./Coments/Comment";
 import { useKeyboard } from "@react-native-community/hooks";
-import { useEffect, useRef } from "react";
+import { useContext, useEffect, useRef } from "react";
 import { useState } from "react";
 import {
   collection,
@@ -33,12 +33,16 @@ import {
   orderBy,
   query,
   addDoc,
+  updateDoc,
+  doc,
 } from "firebase/firestore";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { db } from "../../firebaseConfig";
+import { UserContext } from "../../store/user-context";
+import { Keyboard } from "react-native";
+import { Alert } from "react-native";
 
-
-let last;
+let last = undefined;
 const LIMIT = 10;
 
 function Divider() {
@@ -46,31 +50,134 @@ function Divider() {
 }
 
 function Comments({ route }) {
+  /////// HOOKS AND INITIALIZATION ///////////////////////////////////////////////////////
+
   const navigation = useNavigation();
 
   const insets = useSafeAreaInsets();
 
   const commentInputRef = useRef();
 
-  // Checking if keyboard is shown and the size of it
   const keyboard = useKeyboard();
 
   const [replying, setReplying] = useState(false);
-  const [replyPerson, setRelplyPerson] = useState();
-  const [isEmpty, setIsEmpty] = useState(false);
+  const [replyPerson, setRelplyPerson] = useState({
+    name: "",
+    id: "",
+    parentId: "",
+  });
   const [isErrorRender, setIsErrorRender] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFirstLoading, setFirstLoading] = useState(true);
+  const [comment, setComment] = useState("");
 
   const id = route.params.id;
+
+  const userCtx = useContext(UserContext);
+
+  useEffect(() => {
+    last = undefined;
+  }, []);
+
+  ////// ALL HANDLERS ////////////////////////////////////////////////////////////////////
 
   function backHandler() {
     navigation.goBack();
   }
 
-  function replyHandler(id, name) {
+  function commentChangeHandler(enteredComment) {
+    setComment(enteredComment);
+  }
+
+  async function submitCommentHandler() {
+    if (comment.trim().length < 100) {      // GÓRNY LIMIT DŁUGOŚCI KOMENTARZY
+      if (comment.trim().length > 5) {      // DOLNY LIMIT DŁUGOŚCI KOMENTARZY
+        setComment("");
+        setFirstLoading(true);
+        if (replying) {
+          if (replyPerson.parentId === "") {
+            try {
+              await addDoc(
+                collection(
+                  db,
+                  `posts/${id}/comments/${replyPerson.id}/responses`
+                ),
+                {
+                  name: userCtx.name,
+                  photoUrl: userCtx.photoUrl,
+                  content: comment,
+                  createDate: new Date(),
+                  areResponses: false,
+                }
+              );
+              await updateDoc(
+                doc(db, `posts/${id}/comments/${replyPerson.id}`),
+                {
+                  areResponses: true,
+                }
+              );
+            } catch (e) {
+              console.log(e);
+            }
+          } else {
+            try {
+              await addDoc(
+                collection(
+                  db,
+                  `posts/${id}/comments/${replyPerson.parentId}/responses/${replyPerson.id}/responses`
+                ),
+                {
+                  name: userCtx.name,
+                  photoUrl: userCtx.photoUrl,
+                  content: comment,
+                  createDate: new Date(),
+                  areResponses: false,
+                }
+              );
+              await updateDoc(
+                doc(
+                  db,
+                  `posts/${id}/comments/${replyPerson.parentId}/responses/${replyPerson.id}`
+                ),
+                {
+                  areResponses: true,
+                }
+              );
+            } catch (e) {
+              console.log(e);
+            }
+          }
+        } else {
+          try {
+            await addDoc(collection(db, `posts/${id}/comments`), {
+              name: userCtx.name,
+              photoUrl: userCtx.photoUrl,
+              content: comment,
+              createDate: new Date(),
+              areResponses: false,
+            });
+          } catch (e) {
+            console.log(e);
+          }
+        }
+        last = 1;
+        await refetch();
+        setFirstLoading(false);
+        setReplying(false);
+        Keyboard.dismiss();
+      } else {
+        alert("Your comment must have at least 5 characters");
+      }
+    } else {
+      alert("Your comment can't have more that 105 characters")
+    }
+  }
+
+  function replyHandler({ id, name }, parentId) {
     commentInputRef.current.focus();
+    setComment(`@${name} `);
     setReplying(true);
-    setRelplyPerson(name);
+    setRelplyPerson({ name: name, id: id, parentId: parentId });
   }
 
   function replyCloseHandler() {
@@ -81,22 +188,23 @@ function Comments({ route }) {
     const item = itemData.item;
     return (
       <Comment
+        postId={id}
         name={item.name}
         content={item.content}
-        responses={item.responses}
+        areResponses={item.areResponses}
+        createDate={item.createDate}
         onReply={replyHandler}
         level={1}
+        photoUrl={item.photoUrl}
+        id={item.id}
+        key={item.id}
+        parentId=""
+        grandparentId=""
       />
     );
   }
 
-  //
-  //
-  //fetching comments
-  //
-  //
-
-  
+  ///////  FETCHING COMMENTS  ///////////////////////////////////////////////////////////////////////////////
 
   async function fetchComments() {
     try {
@@ -108,20 +216,16 @@ function Comments({ route }) {
           limit(10) //   ZMIENIĆ POŹNIEJ NA DOBRZE i setERRROT TEŻ  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         )
       );
-      
+
       last = comments.docs[comments.docs.length - 1];
       let readyComments = [];
-      if (comments.empty && flattenData?.length === 0) {
-        setIsEmpty(true);
-      } else {
-        setIsEmpty(false);
-      }
 
       comments.forEach((comment) => {
         //console.log(comment);
         readyComments.push({ id: comment.id, ...comment.data() });
       });
       //console.log(readyComments);
+      setFirstLoading(false);
       return readyComments;
     } catch (error) {
       console.log(error);
@@ -139,7 +243,7 @@ function Comments({ route }) {
     }
   }
 
-  const { data, fetchNextPage, hasNextPage } = useInfiniteQuery({
+  const { refetch, data, fetchNextPage, hasNextPage } = useInfiniteQuery({
     queryKey: ["comments"],
     queryFn: ({ pageParam = 1 }) => {
       return fetchComments(pageParam);
@@ -151,7 +255,10 @@ function Comments({ route }) {
   });
 
   const flattenData = data?.pages.flat();
+
   //console.log(flattenData);
+
+  //////////////////////////////////////////////////////////////////////////////////////////
 
   return (
     <View
@@ -192,50 +299,63 @@ function Comments({ route }) {
           </MenuOptions>
         </Menu>
       </View>
-      <View style={styles.postPreview}>
-        <Image
-          source={require("../../assets/icon.png")}
-          style={styles.postImg}
-        />
-      </View>
+      {!Keyboard.isVisible() && (
+        <View style={styles.postPreview}>
+          <Image
+            source={require("../../assets/icon.png")}
+            style={styles.postImg}
+          />
+        </View>
+      )}
       <Divider />
       <View
         style={[styles.listContainer, keyboard.keyboardShown && { flex: 3 }]}
       >
-        {!isErrorRender ? (<FlatList
-          data={flattenData}
-          renderItem={renderCommentHandler}
-          keyExtractor={(item) => item.id}
-          onEndReached={loadNextPage}
-          onEndReachedThreshold={0.5}
-          ListEmptyComponent={
-            <Text style={styles.errorText}>
-              You don't have any posts to see yet.
-            </Text>
-          }
-          ListFooterComponent={
-            isLoading && (
-              <ActivityIndicator
-                size="large"
-                color={Colors.accent500}
-                style={styles.loading}
-              />
-            ) 
-          }
-        />
-      ) : (
-        <View style={styles.footerContainer}>
-          <Text style={styles.footerTextTitle}>Error</Text>
-          <Text style={styles.footerText}>
-            There was an error while loading. Please check your internet
-            conection or try again later.
-          </Text>
-        </View>
-      )}
+        {!isFirstLoading ? (
+          !isErrorRender ? (
+            <FlatList
+              data={flattenData}
+              renderItem={renderCommentHandler}
+              keyExtractor={(item) => item.id}
+              onEndReached={loadNextPage}
+              onEndReachedThreshold={0.5}
+              ListEmptyComponent={
+                <Text style={styles.errorText}>
+                  There aren't any comments yet. Be the first to comment!
+                </Text>
+              }
+              ListFooterComponent={
+                isLoading && (
+                  <ActivityIndicator
+                    size="large"
+                    color={Colors.accent500}
+                    style={styles.loading}
+                  />
+                )
+              }
+            />
+          ) : (
+            <View style={styles.footerContainer}>
+              <Text style={styles.footerTextTitle}>Error</Text>
+              <Text style={styles.footerText}>
+                There was an error while loading. Please check your internet
+                conection or try again later.
+              </Text>
+            </View>
+          )
+        ) : (
+          <ActivityIndicator
+            size="large"
+            color={Colors.accent500}
+            style={styles.loading}
+          />
+        )}
       </View>
       {replying && (
         <View style={styles.replying}>
-          <Text style={styles.replyingText}>Replying to {replyPerson}</Text>
+          <Text style={styles.replyingText}>
+            Replying to {replyPerson.name}
+          </Text>
           <Pressable onPress={replyCloseHandler}>
             <AntDesign name="close" size={24} color="white" />
           </Pressable>
@@ -254,7 +374,13 @@ function Comments({ route }) {
           ref={commentInputRef}
           style={styles.input}
           placeholder="Add your comment here"
+          value={comment}
+          onChangeText={commentChangeHandler}
+          multiline={true}
         />
+        <Pressable onPress={submitCommentHandler}>
+          <Text style={styles.submitText}>Publish</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -329,16 +455,26 @@ const styles = StyleSheet.create({
     marginHorizontal: 15,
   },
   inputContainer: {
-    height: 40,
     backgroundColor: Colors.primary400,
     marginHorizontal: 20,
     borderRadius: 20,
-    justifyContent: "center",
+    justifyContent: "space-between",
+    alignItems: "center",
+    flexDirection: "row",
     paddingHorizontal: 20,
     marginVertical: 10,
+    minHeight: 40,
+    maxHeight: 70,
+    paddingVertical: 10,
   },
   input: {
+    width: "75%",
     color: Colors.primary100,
+  },
+  submitText: {
+    color: Colors.accent500,
+    fontSize: 15,
+    fontWeight: "bold",
   },
   replying: {
     height: 35,

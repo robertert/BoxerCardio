@@ -26,7 +26,10 @@ import GestureRecognizer from "react-native-swipe-gestures";
 const LIMIT = 10;
 let last; 
 function MainScreen({ navigation }) {
-  //przy ponownym nacisnieciu scroll to the top
+
+  
+
+  //  przy ponownym nacisnieciu scroll to the top //////////////////////////////////////////
   const ref = useRef();
   useEffect(() => {
     const unsubscribe = navigation.addListener("tabPress", (e) => {
@@ -38,11 +41,15 @@ function MainScreen({ navigation }) {
     return unsubscribe;
   }, [navigation]);
 
+  /////// HOOKS AND INITIALIZATION ///////////////////////////////////////////////////////
+
   const [footer, setFooter] = useState(false);
   const [refresh, setRefresh] = useState(false);
   const [isErrorRender, setIsErrorRender] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isEmpty, setIsEmpty] = useState(false);
+
+  ////// ALL HANDLERS ////////////////////////////////////////////////////////////////////
 
   async function handler() {
     await auth.signOut();
@@ -67,6 +74,10 @@ function MainScreen({ navigation }) {
     );
   }
 
+
+  ////// FETCHING POSTS ///////////////////////////////////////////////////////////////////////////////
+
+
   async function fetchPosts(pageParam) {
     try {
       const posts = await getDocs(
@@ -87,9 +98,8 @@ function MainScreen({ navigation }) {
       }
 
       posts.forEach((post) => {
-        readyPosts.push({ id: post.id, ...post.data() });
+        readyPosts.push({ id: post.id, ...post.data()});
       });
-      //console.log(readyPosts);
       return readyPosts;
     } catch (error) {
       console.log(error);
@@ -120,6 +130,8 @@ function MainScreen({ navigation }) {
 
   const flattenData = data?.pages.flat();
   //console.log(flattenData);
+
+  ///////////////////////////////////////////////////////////////////////////////////////
 
   return (
     <View style={styles.root}>

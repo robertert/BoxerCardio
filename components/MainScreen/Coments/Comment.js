@@ -2,14 +2,28 @@ import { useEffect, useState } from "react";
 import { View, StyleSheet, Image, Text, Pressable } from "react-native";
 import Colors from "../../../constants/colors";
 import CommentList from "./CommentList";
+import CommentList2 from "./CommentList2";
 
-function Comment({ content, id, name, photoUrl, responses, onReply, level }) {
+function Comment({
+  postId,
+  parentId,
+  content,
+  id,
+  name,
+  photoUrl,
+  areResponses,
+  createDate,
+  onReply,
+  level,
+  grandparentId,
+}) {
   const [isResponse, setIsResponse] = useState(false);
   const [showResponse, setShowResponse] = useState(false);
   const [showReply, setShowReply] = useState(true);
+
   useEffect(() => {
-    if (responses) {
-      setIsResponse(responses?.length !== 0);
+    if (areResponses) {
+      setIsResponse(true);
     }
     if (level >= 3) {
       setIsResponse(false);
@@ -18,7 +32,11 @@ function Comment({ content, id, name, photoUrl, responses, onReply, level }) {
   }, []);
 
   function replyHandler() {
-    onReply(id,name);
+    if (level == 1) {
+      onReply({ id: id, name: name }, "");
+    } else {
+      onReply({ id: id, name: name }, parentId);
+    }
   }
   function answerShowHandler() {
     setShowResponse(true);
@@ -52,13 +70,26 @@ function Comment({ content, id, name, photoUrl, responses, onReply, level }) {
         </View>
       </View>
       {showResponse && (
-        <View style={styles.responses}>
-          <CommentList
-            responses={responses}
-            onHide={answerHideHandler}
-            onReply={onReply}
-            level={level + 1}
-          />
+        <View style={[styles.responses, level >= 2 && { marginLeft: 0 }]}>
+          {level === 1 ? (
+            <CommentList
+              postId={postId}
+              id={id}
+              parentId={parentId}
+              onHide={answerHideHandler}
+              onReply={onReply}
+              level={2}
+            />
+          ) : (
+            <CommentList2
+              postId={postId}
+              id={id}
+              parentId={parentId}
+              onHide={answerHideHandler}
+              onReply={onReply}
+              level={3}
+            />
+          )}
         </View>
       )}
     </View>

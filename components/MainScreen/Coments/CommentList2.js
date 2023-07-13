@@ -9,7 +9,7 @@ import { ActivityIndicator } from "react-native";
 let responses = [];
 let parentIdd, grandparentId;
 
-function CommentList({ postId, parentId, id, onHide, onReply, level }) {
+function CommentList2({ postId, parentId, id, onHide, onReply, level }) {
   const [isLoading, setIsLoading] = useState(true);
   //console.log(level);
   function answerHideHandler() {
@@ -19,7 +19,7 @@ function CommentList({ postId, parentId, id, onHide, onReply, level }) {
   async function fetchRes() {
     let docPath;
     setIsLoading(true);
-    docPath = `posts/${postId}/comments/${id}/responses`;
+    docPath = `posts/${postId}/comments/${parentId}/responses/${id}/responses`;
     const responsesFeched = await getDocs(collection(db, docPath));
     responsesFeched.forEach((res) => {
       responses.push({ id: res.id, ...res.data() });
@@ -33,8 +33,9 @@ function CommentList({ postId, parentId, id, onHide, onReply, level }) {
     responses = [];
     fetchRes();
     parentIdd = id;
-    grandparentId = "";
+    grandparentId = parentId;
   }, []);
+
 
   return (
     <View style={{ flex: 1 }}>
@@ -67,7 +68,7 @@ function CommentList({ postId, parentId, id, onHide, onReply, level }) {
   );
 }
 
-export default CommentList;
+export default CommentList2;
 
 const styles = StyleSheet.create({
   footerText: {

@@ -1,7 +1,7 @@
 import { View, StyleSheet, Text, Image, Pressable } from "react-native";
 import Colors from "../../constants/colors";
 import { Entypo } from "@expo/vector-icons";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { AntDesign } from "@expo/vector-icons";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Feather } from "@expo/vector-icons";
@@ -12,23 +12,41 @@ import {
   MenuOptions,
 } from "react-native-popup-menu";
 import { useNavigation } from "@react-navigation/native";
+import { db } from "../../firebaseConfig";
+import { updateDoc, doc, increment, arrayUnion, arrayRemove } from "firebase/firestore";
+import { UserContext } from "../../store/user-context";
 
 function Divider() {
-  return (
-    <View style={styles.divider}>
-    </View>
-  );
+  return <View style={styles.divider}></View>;
 }
 
-function Post({ name,onShare,id }) {
+function Post({ name, onShare, id }) {
   const [isLiked, setIsLiked] = useState(false);
   const navigation = useNavigation();
+  const userCtx = useContext(UserContext);
 
-  function likeHandler() {
+  async function likeHandler() {
+    if (!isLiked) {
+      await updateDoc(doc(db, `posts/${id}`), {
+        numberOfLikes: increment(1),
+        likes: arrayUnion({
+          name: userCtx.name,
+          photoUrl: userCtx.photoUrl,
+        }),
+      });
+    } else {
+      await updateDoc(doc(db, `posts/${id}`), {
+        numberOfLikes: increment(-1),
+        likes: arrayRemove({
+          name: userCtx.name,
+          photoUrl: userCtx.photoUrl,
+        }),
+      });
+    }
     setIsLiked((prev) => !prev);
   }
   function commentHandler() {
-    navigation.getParent().navigate('comment',{id: id});
+    navigation.getParent().navigate("comment", { id: id });
   }
   function shareHandler() {
     onShare();
@@ -38,7 +56,10 @@ function Post({ name,onShare,id }) {
     <View style={styles.root}>
       <View style={styles.head}>
         <View style={styles.left}>
-          <Image source={require("../../assets/icon.png")} style={styles.image} />
+          <Image
+            source={require("../../assets/icon.png")}
+            style={styles.image}
+          />
           <Text style={styles.name}>{name}</Text>
         </View>
         <View style={styles.right}>
@@ -50,12 +71,18 @@ function Post({ name,onShare,id }) {
               customStyles={{
                 optionsContainer: styles.info,
                 optionText: styles.infoText,
-                optionsWrapper: styles.infoWraper
+                optionsWrapper: styles.infoWraper,
               }}
             >
-              <MenuOption onSelect={()=>navigation.getParent().navigate('report')} text="Report" />
-              <Divider/>
-              <MenuOption onSelect={() => alert(`Removed friends`)} text="Remove friend" />
+              <MenuOption
+                onSelect={() => navigation.getParent().navigate("report")}
+                text="Report"
+              />
+              <Divider />
+              <MenuOption
+                onSelect={() => alert(`Removed friends`)}
+                text="Remove friend"
+              />
             </MenuOptions>
           </Menu>
         </View>
@@ -145,9 +172,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: 15,
   },
-  divider:{
+  divider: {
     backgroundColor: Colors.primary100_30,
     width: "100%",
-    height : 1,
+    height: 1,
   },
 });

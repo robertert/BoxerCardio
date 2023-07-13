@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from "react";
+import { useContext, useState } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -9,12 +9,12 @@ import {
   ScrollView,
 } from "react-native";
 import Colors from "../../constants/colors";
-import Header from "../UI/Header";
 import ButtonPrim from "../UI/ButtonPrim";
 import { authenticate } from "../../util/auth";
 import * as SplashScreen from "expo-splash-screen";
 import { AuthContext } from "../../store/auth-context";
 import { useNavigation } from "@react-navigation/native";
+import { UserContext } from "../../store/user-context";
 
 function AuthForm() {
   const [username, setUsername] = useState();
@@ -29,6 +29,7 @@ function AuthForm() {
   const [isLoading, setIsLoading] = useState(false);
 
   const authCtx = useContext(AuthContext);
+  const userCtx = useContext(UserContext);
   const navigation = useNavigation();
 
   const usernameChangeHandler = (enteredUsername) => {
@@ -109,14 +110,14 @@ function AuthForm() {
   async function submitRegisterHandler() {
     if (validateRegister()) {
       setIsLoading(true);
-      await authenticate("signIn", email, password, authCtx);
+      await authenticate("signIn", email, password, authCtx, userCtx);
       setIsLoading(false);
     }
   }
 
   async function logInHandler() {
     setIsLoading(true);
-    await authenticate("logIn", email, password, authCtx);
+    await authenticate("logIn", email, password, authCtx, userCtx);
     setIsLoading(false);
   }
 
