@@ -35,19 +35,16 @@ import {
   addDoc,
   updateDoc,
   doc,
+  increment,
 } from "firebase/firestore";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { db } from "../../firebaseConfig";
 import { UserContext } from "../../store/user-context";
 import { Keyboard } from "react-native";
-import { Alert } from "react-native";
+import Divider from "../UI/Divider";
 
 let last = undefined;
 const LIMIT = 10;
-
-function Divider() {
-  return <View style={styles.divider}></View>;
-}
 
 function Comments({ route }) {
   /////// HOOKS AND INITIALIZATION ///////////////////////////////////////////////////////
@@ -94,6 +91,9 @@ function Comments({ route }) {
       if (comment.trim().length > 5) {      // DOLNY LIMIT DŁUGOŚCI KOMENTARZY
         setComment("");
         setFirstLoading(true);
+        await updateDoc(doc(db,`posts/${id}`),{
+          numberOfComments: increment(1),
+        })
         if (replying) {
           if (replyPerson.parentId === "") {
             try {
@@ -290,7 +290,7 @@ function Comments({ route }) {
               optionsWrapper: styles.infoWraper,
             }}
           >
-            <MenuOption onSelect={() => alert("fasdfas")} text="Report" />
+            <MenuOption onSelect={() => alert("fasdfas")} text="View profile" />
             <Divider />
             <MenuOption
               onSelect={() => alert(`Removed friends`)}
@@ -443,11 +443,6 @@ const styles = StyleSheet.create({
     height: 120,
     width: 200,
     borderRadius: 20,
-  },
-  divider: {
-    backgroundColor: Colors.primary100_30,
-    width: "100%",
-    height: 1,
   },
   listContainer: {
     flex: 8,
