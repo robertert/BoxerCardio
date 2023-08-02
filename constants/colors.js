@@ -29,6 +29,69 @@ export const DUMMY_LIST = [
   },
 ];
 
-const DUMMY_LEADERBOARD = []
+export const DUMMY_LEADERBOARD = [
+  {
+    rank: 1,
+    name: "bobo",
+    score: 121,
+  },
+  {
+    rank: 2,
+    name: "ROBERT",
+    score: 121,
+  },
+  {
+    rank: 3,
+    name: "ROBERT",
+    score: 112,
+  },
+  {
+    rank: 4,
+    name: "ROBERT",
+    score: 111,
+  },
+  {
+    rank: 5,
+    name: "ROBERT",
+    score: 100,
+  },
+  {
+    rank: 6,
+    name: "ROBERT",
+    score: 12,
+  },
+  {
+    rank: 7,
+    name: "ROBERT",
+    score: 121,
+  },
+  {
+    rank: 8,
+    name: "ROBERT",
+    score: 121,
+  },
+  {
+    rank: 9,
+    name: "ROBERT",
+    score: 121,
+  },
+  {
+    rank: 10,
+    name: "ROBERT",
+    score: 121,
+  },
+  {
+    rank: 11,
+    name: "ROBERT",
+    score: 121,
+  },
+  {
+    rank: 12,
+    name: "ROBERT",
+    score: 121,
+  },
+
+
+]
 
 export default Colors;

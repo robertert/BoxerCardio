@@ -36,6 +36,7 @@ import {
   updateDoc,
   doc,
   increment,
+  writeBatch,
 } from "firebase/firestore";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { db } from "../../firebaseConfig";
@@ -67,6 +68,7 @@ function Comments({ route }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isFirstLoading, setFirstLoading] = useState(true);
   const [comment, setComment] = useState("");
+  const [refresh,setRefresh] = useState(false);
 
   const id = route.params.id;
 
@@ -87,62 +89,64 @@ function Comments({ route }) {
   }
 
   async function submitCommentHandler() {
-    if (comment.trim().length < 100) {      // GÓRNY LIMIT DŁUGOŚCI KOMENTARZY
-      if (comment.trim().length > 5) {      // DOLNY LIMIT DŁUGOŚCI KOMENTARZY
+    if (comment.trim().length < 100) {
+      // GÓRNY LIMIT DŁUGOŚCI KOMENTARZY
+      if (comment.trim().length > 0) {
+        // DOLNY LIMIT DŁUGOŚCI KOMENTARZY
         setComment("");
-        setFirstLoading(true);
-        await updateDoc(doc(db,`posts/${id}`),{
+        await updateDoc(doc(db, `posts/${id}`), {
           numberOfComments: increment(1),
-        })
+        });
         if (replying) {
           if (replyPerson.parentId === "") {
             try {
-              await addDoc(
-                collection(
-                  db,
-                  `posts/${id}/comments/${replyPerson.id}/responses`
+              await Promise.all([
+                addDoc(
+                  collection(
+                    db,
+                    `posts/${id}/comments/${replyPerson.id}/responses`
+                  ),
+                  {
+                    name: userCtx.name,
+                    photoUrl: userCtx.photoUrl,
+                    content: comment,
+                    createDate: new Date(),
+                    areResponses: false,
+                  }
                 ),
-                {
-                  name: userCtx.name,
-                  photoUrl: userCtx.photoUrl,
-                  content: comment,
-                  createDate: new Date(),
-                  areResponses: false,
-                }
-              );
-              await updateDoc(
-                doc(db, `posts/${id}/comments/${replyPerson.id}`),
-                {
+                updateDoc(doc(db, `posts/${id}/comments/${replyPerson.id}`), {
                   areResponses: true,
-                }
-              );
+                }),
+              ]);
             } catch (e) {
               console.log(e);
             }
           } else {
             try {
-              await addDoc(
-                collection(
-                  db,
-                  `posts/${id}/comments/${replyPerson.parentId}/responses/${replyPerson.id}/responses`
+              await Promise.all([
+                updateDoc(
+                  doc(
+                    db,
+                    `posts/${id}/comments/${replyPerson.parentId}/responses/${replyPerson.id}`
+                  ),
+                  {
+                    areResponses: true,
+                  }
                 ),
-                {
-                  name: userCtx.name,
-                  photoUrl: userCtx.photoUrl,
-                  content: comment,
-                  createDate: new Date(),
-                  areResponses: false,
-                }
-              );
-              await updateDoc(
-                doc(
-                  db,
-                  `posts/${id}/comments/${replyPerson.parentId}/responses/${replyPerson.id}`
+                addDoc(
+                  collection(
+                    db,
+                    `posts/${id}/comments/${replyPerson.parentId}/responses/${replyPerson.id}/responses`
+                  ),
+                  {
+                    name: userCtx.name,
+                    photoUrl: userCtx.photoUrl,
+                    content: comment,
+                    createDate: new Date(),
+                    areResponses: false,
+                  }
                 ),
-                {
-                  areResponses: true,
-                }
-              );
+              ]);
             } catch (e) {
               console.log(e);
             }
@@ -160,16 +164,15 @@ function Comments({ route }) {
             console.log(e);
           }
         }
-        last = 1;
+        last = undefined;
         await refetch();
-        setFirstLoading(false);
         setReplying(false);
         Keyboard.dismiss();
       } else {
-        alert("Your comment must have at least 5 characters");
+        alert("Your comment must have at least 1 characters");
       }
     } else {
-      alert("Your comment can't have more that 105 characters")
+      alert("Your comment can't have more that 105 characters");
     }
   }
 
@@ -186,6 +189,7 @@ function Comments({ route }) {
 
   function renderCommentHandler(itemData) {
     const item = itemData.item;
+    //console.log(item.areResponses);
     return (
       <Comment
         postId={id}
@@ -221,7 +225,7 @@ function Comments({ route }) {
       let readyComments = [];
 
       comments.forEach((comment) => {
-        //console.log(comment);
+        //console.log(comment.data().areResponses);
         readyComments.push({ id: comment.id, ...comment.data() });
       });
       //console.log(readyComments);
@@ -319,6 +323,15 @@ function Comments({ route }) {
               keyExtractor={(item) => item.id}
               onEndReached={loadNextPage}
               onEndReachedThreshold={0.5}
+              refreshing={refresh}
+              onRefresh={async () => {
+                try {
+                  await refetch();
+                  setRefresh(false);
+                } catch (e) {
+                  console.log(e);
+                }
+              }}
               ListEmptyComponent={
                 <Text style={styles.errorText}>
                   There aren't any comments yet. Be the first to comment!
