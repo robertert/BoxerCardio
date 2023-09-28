@@ -1,13 +1,21 @@
 import { View, Text, StyleSheet, SafeAreaView, Pressable } from "react-native";
-import { useCallback } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "../../constants/colors";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useCallback } from "react";
 
 function Header({ settings, back, onPress }) {
   const insets = useSafeAreaInsets();
+
+  const navigation = useNavigation();
+
+  function settingsHandler() {
+    navigation.navigate("settings");
+  }
+
   const [fontsLoaded] = useFonts({
     RubikMono: require("../../assets/fonts/RubikMonoOne-Regular.ttf"),
   });
@@ -18,29 +26,34 @@ function Header({ settings, back, onPress }) {
     }
   }, [fontsLoaded]);
 
-  if (!fontsLoaded) {
-    return null;
-  }
   return (
     <>
-      <View
-        style={[
-          styles.rootContainer,
-          { paddingTop: insets.top + 10, height: 55 + insets.top },
-        ]}
-        onLayout={onLayoutRootView}
-      >
-        <Text style={styles.text}>GYMBOXER</Text>
-        {back && (
-          <Pressable
-            onPress={onPress}
-            style={({ pressed }) => pressed && styles.pressed}
-          >
-            <Ionicons name="chevron-back-outline" size={24} color="white" />
-          </Pressable>
-        )}
-        {settings && <Ionicons name="settings-sharp" size={24} color="white" />}
-      </View>
+      {fontsLoaded ? (
+        <View
+          style={[
+            styles.rootContainer,
+            { paddingTop: insets.top + 10, height: 55 + insets.top },
+          ]}
+          onLayout={onLayoutRootView}
+        >
+          <Text style={styles.text}>GYMBOXER</Text>
+          {back && (
+            <Pressable
+              onPress={onPress}
+              style={({ pressed }) => pressed && styles.pressed}
+            >
+              <Ionicons name="chevron-back-outline" size={24} color="white" />
+            </Pressable>
+          )}
+          {settings && (
+            <Pressable onPress={settingsHandler}>
+              <Ionicons name="settings-sharp" size={24} color="white" />
+            </Pressable>
+          )}
+        </View>
+      ) : (
+        <View></View>
+      )}
     </>
   );
 }

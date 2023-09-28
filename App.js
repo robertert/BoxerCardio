@@ -6,6 +6,7 @@ import { MenuProvider } from "react-native-popup-menu";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import UserContextProvider from "./store/user-context";
 import CommentContextProvider from "./store/comment-context";
+import ShelfContextProvider from "./store/shelf-context";
 SplashScreen.preventAutoHideAsync();
 const queryClient = new QueryClient();
 
@@ -14,13 +15,15 @@ export default function App() {
     <SafeAreaProvider>
       <MenuProvider>
         <QueryClientProvider client={queryClient}>
-          <UserContextProvider>
-            <CommentContextProvider>
-              <AuthContextProvider>
-                <RootNavigation />
-              </AuthContextProvider>
-            </CommentContextProvider>
-          </UserContextProvider>
+          <ShelfContextProvider>
+            <UserContextProvider>
+              <CommentContextProvider>
+                <AuthContextProvider>
+                  <RootNavigation />
+                </AuthContextProvider>
+              </CommentContextProvider>
+            </UserContextProvider>
+          </ShelfContextProvider>
         </QueryClientProvider>
       </MenuProvider>
     </SafeAreaProvider>

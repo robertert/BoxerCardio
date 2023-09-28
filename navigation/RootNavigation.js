@@ -1,4 +1,4 @@
-import { auth } from "../firebaseConfig";
+import { auth, db } from "../firebaseConfig";
 import { StatusBar } from "expo-status-bar";
 import { StyleSheet } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
@@ -9,14 +9,27 @@ import Colors from "../constants/colors";
 
 import { View } from "react-native";
 import MainStack from "./MainStack";
+import { UserContext } from "../store/user-context";
+import { collection, getDoc, getDocs, query, where } from "firebase/firestore";
 
 function RootNavigation() {
   const authCtx = useContext(AuthContext);
+  const userCtx = useContext(UserContext);
+
+
 
   useEffect(() => {
     auth.onAuthStateChanged((user) => {
+      async function auth() {
+        const userDb = await getDocs(
+          query(collection(db, `users`), where("email", "==", user.email))
+        );
+        const gotUser = { id: userDb.docs[0].id, ...userDb.docs[0].data() };
+        userCtx.getUser(gotUser.name, gotUser.photoUrl, gotUser.id);
+      }
       if (user) {
         authCtx.authenticate(user.stsTokenManager.accessToken);
+        auth();
       } else {
         authCtx.logout();
       }
@@ -24,15 +37,13 @@ function RootNavigation() {
   }, []);
 
   return (
-    <View
-        style={styles.root}
-      >
-    <NavigationContainer>
-      <StatusBar style="light" />
-      
+    <View style={styles.root}>
+      <NavigationContainer>
+        <StatusBar style="light" />
+
         {authCtx.isAuth && <MainStack />}
-        {!authCtx.isAuth && <AuthStack />} 
-    </NavigationContainer>
+        {!authCtx.isAuth && <AuthStack />}
+      </NavigationContainer>
     </View>
   );
 }

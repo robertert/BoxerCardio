@@ -10,7 +10,7 @@ import {
   MenuTrigger,
   MenuOptions,
 } from "react-native-popup-menu";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FlashList } from "@shopify/flash-list";
 import LeaderboardItem from "../components/Friends/LeaderboardItem";
 import { useNavigation } from "@react-navigation/native";
@@ -21,15 +21,29 @@ function FriendsScreen() {
   const [mode, setMode] = useState("100 P");
   const [group, setGroup] = useState("FRIENDS");
   const [timeRange, setTimeRange] = useState("MONTH");
+  const [search,setSearch] = useState("");
 
   const navigation = useNavigation();
 
   const teams = [];
 
+  useEffect(()=>{
+    const time = setTimeout(()=>{
+      if(search!==""){
+        console.log("Fetching...");
+      }
+    },1000);
+    return () => clearTimeout(time)
+  },[search])
+
+  function searchHandler(searchText){
+     setSearch(searchText);
+  }
+
   function renderLeaderboardHandler(itemData) {
     const item = itemData.item;
     return (
-      <LeaderboardItem rank={item.rank} name={item.name} score={item.score} />
+      <LeaderboardItem rank={item.rank} name={item.name} score={item.score} userId={item.id}/>
     );
   }
 
@@ -162,7 +176,7 @@ function FriendsScreen() {
         </View>
       </View>
       <View style={styles.searchContainer}>
-        <TextInput placeholder="Search" />
+        <TextInput autoCapitalize="none" onChangeText={searchHandler} style={styles.input} placeholder="Search" />
       </View>
       <View style={styles.leaderboardContainer}>
         <FlashList
@@ -252,6 +266,9 @@ const styles = StyleSheet.create({
   infoWraperS: {
     paddingHorizontal: 5,
     paddingVertical: 10,
+  },
+  input: {
+    color: Colors.primary100,
   },
   searchContainer: {
     marginVertical: 15,

@@ -36,15 +36,13 @@ import {
   updateDoc,
   doc,
   increment,
-  writeBatch,
 } from "firebase/firestore";
-import { useInfiniteQuery } from "@tanstack/react-query";
-import { db } from "../../firebaseConfig";
+import { db, storage } from "../../firebaseConfig";
 import { UserContext } from "../../store/user-context";
 import { Keyboard } from "react-native";
 import Divider from "../UI/Divider";
+import { getDownloadURL, ref } from "firebase/storage";
 
-let last = undefined;
 const LIMIT = 10;
 
 function Comments({ route }) {
@@ -67,16 +65,17 @@ function Comments({ route }) {
   const [isErrorRender, setIsErrorRender] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isFirstLoading, setFirstLoading] = useState(true);
+  const [lastDoc, setLastDoc] = useState();
   const [comment, setComment] = useState("");
-  const [refresh,setRefresh] = useState(false);
+  const [refresh, setRefresh] = useState(false);
+  const [commentData, setCommentData] = useState([]);
+  const [isNextPage, setIsNextPage] = useState(false);
+  const [image,setImage] = useState();
 
   const id = route.params.id;
+  const userId = route.params.userId;
 
   const userCtx = useContext(UserContext);
-
-  useEffect(() => {
-    last = undefined;
-  }, []);
 
   ////// ALL HANDLERS ////////////////////////////////////////////////////////////////////
 
@@ -88,6 +87,10 @@ function Comments({ route }) {
     setComment(enteredComment);
   }
 
+  function viewProfileHandler() {
+    navigation.navigate("friend-profile", { id: userId });
+  }
+
   async function submitCommentHandler() {
     if (comment.trim().length < 100) {
       // GÓRNY LIMIT DŁUGOŚCI KOMENTARZY
@@ -95,7 +98,7 @@ function Comments({ route }) {
         // DOLNY LIMIT DŁUGOŚCI KOMENTARZY
         setComment("");
         await updateDoc(doc(db, `posts/${id}`), {
-          numberOfComments: increment(1),
+          commentsNum: increment(1),
         });
         if (replying) {
           if (replyPerson.parentId === "") {
@@ -107,6 +110,7 @@ function Comments({ route }) {
                     `posts/${id}/comments/${replyPerson.id}/responses`
                   ),
                   {
+                    userId: userCtx.id,
                     name: userCtx.name,
                     photoUrl: userCtx.photoUrl,
                     content: comment,
@@ -139,6 +143,7 @@ function Comments({ route }) {
                     `posts/${id}/comments/${replyPerson.parentId}/responses/${replyPerson.id}/responses`
                   ),
                   {
+                    userId: userCtx.id,
                     name: userCtx.name,
                     photoUrl: userCtx.photoUrl,
                     content: comment,
@@ -154,6 +159,7 @@ function Comments({ route }) {
         } else {
           try {
             await addDoc(collection(db, `posts/${id}/comments`), {
+              userId: userCtx.id,
               name: userCtx.name,
               photoUrl: userCtx.photoUrl,
               content: comment,
@@ -164,8 +170,10 @@ function Comments({ route }) {
             console.log(e);
           }
         }
-        last = undefined;
-        await refetch();
+        setFirstLoading(true);
+        setCommentData([]);
+        await initialFetch();
+        setFirstLoading(false);
         setReplying(false);
         Keyboard.dismiss();
       } else {
@@ -192,6 +200,7 @@ function Comments({ route }) {
     //console.log(item.areResponses);
     return (
       <Comment
+        userId={item.userId}
         postId={id}
         name={item.name}
         content={item.content}
@@ -208,29 +217,65 @@ function Comments({ route }) {
     );
   }
 
+  async function fetchPhoto() {
+    try {
+      const url = await getDownloadURL(
+        ref(storage, `users/${userId}/photo.jpg`)
+      );
+      setImage(url);
+    } catch (e) {
+      console.log(e);
+      if (e.code === "storage/object-not-found") {
+        try {
+          const url = await getDownloadURL(
+            ref(storage, `users/defaultPhoto.jpg`)
+          );
+
+          setImage(url);
+        } catch (e) {
+          console.log(e);
+        }
+      }
+    }
+  }
+
   ///////  FETCHING COMMENTS  ///////////////////////////////////////////////////////////////////////////////
 
-  async function fetchComments() {
+  useEffect(() => {
+    initialFetch();
+    fetchPhoto();
+  }, []);
+
+  async function initialFetch() {
     try {
       const comments = await getDocs(
         query(
           collection(db, `posts/${id}/comments`),
           orderBy("name"),
-          startAfter(last ? last : 1),
           limit(10) //   ZMIENIĆ POŹNIEJ NA DOBRZE i setERRROT TEŻ  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         )
       );
 
-      last = comments.docs[comments.docs.length - 1];
-      let readyComments = [];
+      const lastD = comments.docs[comments.docs.length - 1];
+      setLastDoc(lastD);
 
+      let readyComments = [];
       comments.forEach((comment) => {
         //console.log(comment.data().areResponses);
         readyComments.push({ id: comment.id, ...comment.data() });
       });
       //console.log(readyComments);
       setFirstLoading(false);
-      return readyComments;
+
+      if (readyComments.length === 10) {
+        setIsNextPage(true);
+      } else {
+        setIsNextPage(false);
+      }
+
+      setCommentData([...readyComments]);
+
+      return true;
     } catch (error) {
       console.log(error);
       setIsErrorRender(false); //////// ZMIENIĆ POŹŃEJ
@@ -238,29 +283,45 @@ function Comments({ route }) {
     }
   }
 
-  async function loadNextPage() {
-    if (hasNextPage) {
-      console.log("LOADING COM");
+  async function nextFetch() {
+    if (isNextPage) {
       setIsLoading(true);
-      await fetchNextPage();
-      setIsLoading(false);
+      try {
+        const comments = await getDocs(
+          query(
+            collection(db, `posts/${id}/comments`),
+            orderBy("name"),
+            startAfter(lastDoc),
+            limit(10) //   ZMIENIĆ POŹNIEJ NA DOBRZE i setERRROT TEŻ  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+          )
+        );
+
+        const lastD = comments.docs[comments.docs.length - 1];
+        setLastDoc(lastD);
+
+        let readyComments = [];
+
+        comments.forEach((comment) => {
+          readyComments.push({ id: comment.id, ...comment.data() });
+        });
+
+        setIsLoading(false);
+        if (readyComments.length === 10) {
+          setIsNextPage(true);
+        } else {
+          setIsNextPage(false);
+        }
+
+        setCommentData((prev) => [...prev, ...readyComments]);
+
+        return true;
+      } catch (error) {
+        console.log(error);
+        setIsErrorRender(true); //////// ZMIENIĆ POŹŃEJ
+        return [];
+      }
     }
   }
-
-  const { refetch, data, fetchNextPage, hasNextPage } = useInfiniteQuery({
-    queryKey: ["comments"],
-    queryFn: ({ pageParam = 1 }) => {
-      return fetchComments(pageParam);
-    },
-    getNextPageParam: (lastPage, allPages) => {
-      const nextPage = lastPage.length === LIMIT ? 1 : undefined;
-      return nextPage;
-    },
-  });
-
-  const flattenData = data?.pages.flat();
-
-  //console.log(flattenData);
 
   //////////////////////////////////////////////////////////////////////////////////////////
 
@@ -278,7 +339,7 @@ function Comments({ route }) {
         </Pressable>
         <View style={styles.user}>
           <Image
-            source={require("../../assets/icon.png")}
+            source={{uri: image}}
             style={styles.userImage}
           />
           <Text style={styles.userName}>Mankowska</Text>
@@ -294,7 +355,7 @@ function Comments({ route }) {
               optionsWrapper: styles.infoWraper,
             }}
           >
-            <MenuOption onSelect={() => alert("fasdfas")} text="View profile" />
+            <MenuOption onSelect={viewProfileHandler} text="View profile" />
             <Divider />
             <MenuOption
               onSelect={() => alert(`Removed friends`)}
@@ -318,17 +379,23 @@ function Comments({ route }) {
         {!isFirstLoading ? (
           !isErrorRender ? (
             <FlatList
-              data={flattenData}
+              extraData={commentData}
+              data={commentData}
               renderItem={renderCommentHandler}
               keyExtractor={(item) => item.id}
-              onEndReached={loadNextPage}
+              onEndReached={nextFetch}
               onEndReachedThreshold={0.5}
               refreshing={refresh}
               onRefresh={async () => {
                 try {
-                  await refetch();
+                  setIsErrorRender(false);
+                  setCommentData([]);
+                  setFirstLoading(true);
+                  await initialFetch();
+                  setFirstLoading(false);
                   setRefresh(false);
                 } catch (e) {
+                  setIsErrorRender(true);
                   console.log(e);
                 }
               }}

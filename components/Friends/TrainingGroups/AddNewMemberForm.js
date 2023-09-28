@@ -1,5 +1,12 @@
-import { useState } from "react";
-import { View, StyleSheet, Text, TextInput, Pressable } from "react-native";
+import { useContext, useState } from "react";
+import {
+  View,
+  StyleSheet,
+  Text,
+  TextInput,
+  Pressable,
+  Alert,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FontAwesome } from "@expo/vector-icons";
 import Colors from "../../../constants/colors";
@@ -7,20 +14,30 @@ import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { FlashList } from "@shopify/flash-list";
 import { AntDesign } from "@expo/vector-icons";
+import { addDoc, arrayUnion, collection, doc, increment, updateDoc } from "firebase/firestore";
+import { db } from "../../../firebaseConfig";
+import { UserContext } from "../../../store/user-context";
 
-function AddNewMemberForm() {
+function AddNewMemberForm({ route }) {
   const insets = useSafeAreaInsets();
 
   const navigation = useNavigation();
 
+  const teamId = route.params.teamId;
+  const teamName = route.params.teamName;
+
+  const userCtx = useContext(UserContext);
+
   const [results, setResults] = useState([
     {
-      id: Math.floor(Math.random() * Math.floor(Math.random() * Date.now())),
-      name: "bobo",
+      id: "IdpXV5g6c5743EiJS2zD",
+      name: "mankowskae",
+      photoUrl: "url",
     },
     {
-        id: Math.floor(Math.random() * Math.floor(Math.random() + 1 * Date.now())),
-        name: "bobo",
+      id: 125,
+      name: "bobo1",
+      photoUrl: "url",
     },
   ]);
   const [search, setSearch] = useState("");
@@ -36,8 +53,22 @@ function AddNewMemberForm() {
 
   function renderResultHandler(itemData) {
     const item = itemData.item;
-    function addMemberHandler() {
-        // DODAWANIE DO LISTY GRUPY
+    async function addMemberHandler() {
+      try {
+        //SEND NOTIFICATION
+        await addDoc(collection(db,`users/${item.id}/notifications`),{
+          type: "groupInvitation",
+          groupId: teamId,
+          groupName: teamName,
+          userId: userCtx.id,
+          name: userCtx.name,
+          photoUrl: userCtx.photoUrl,
+          text: `${userCtx.name} send you an invitation to ${teamName} training group.`
+        })       
+      } catch (e) {
+        console.log(e);
+        Alert.alert("Error", "There was a problem. Try again later");
+      }
     }
     return (
       <View style={styles.resultContainer}>

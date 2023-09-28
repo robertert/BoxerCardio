@@ -3,6 +3,7 @@ import { getApp, initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "@firebase/firestore";
+import { getStorage } from "firebase/storage";
 import {
   getFunctions,
   connectFunctionsEmulator,
@@ -29,6 +30,7 @@ export const auth = getAuth(FIREBASE_APP);
 export const db = getFirestore(FIREBASE_APP);
 // export const functions = getFunctions(FIREBASE_APP);
 export const functions = getFunctions(getApp());
+export const storage = getStorage(FIREBASE_APP);
 
 export async function post(funcName, params) {
   try {

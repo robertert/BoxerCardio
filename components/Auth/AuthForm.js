@@ -59,11 +59,11 @@ function AuthForm() {
   }
 
   function validateRegister() {
-    if (username.trim().length < 6 || !isAlphanumeric(username)) {
+    if (username.trim().length < 2 || !isAlphanumeric(username)|| username.trim().length > 15) {
       // dodac czy unikalna
       setInvaildUsername(true);
       authCtx.changeMessage(
-        "Username should be at least 6 characters long and contain only letters and numbers"
+        "Username should be at least 2 characters long and contain only letters and numbers"
       );
       return false;
     }
@@ -110,7 +110,7 @@ function AuthForm() {
   async function submitRegisterHandler() {
     if (validateRegister()) {
       setIsLoading(true);
-      await authenticate("signIn", email, password, authCtx, userCtx);
+      await authenticate("signIn", email, password, authCtx, userCtx,username);
       setIsLoading(false);
     }
   }
@@ -144,6 +144,7 @@ function AuthForm() {
                 style={[styles.input, invalidUsername && styles.invalid]}
                 onChangeText={usernameChangeHandler}
                 value={username}
+                maxLength={12}
               />
               <Text style={styles.label}>Email</Text>
               <TextInput

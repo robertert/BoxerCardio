@@ -44,6 +44,7 @@ function CommentList({ postId, parentId, id, onHide, onReply, level }) {
         responses.map((item) => {
           return (
             <Comment
+              userId={item.userId}
               postId={postId}
               name={item.name}
               content={item.content}

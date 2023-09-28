@@ -1,4 +1,11 @@
-import { View, Text, Image, Pressable, StyleSheet } from "react-native";
+import {
+  View,
+  Text,
+  Image,
+  Pressable,
+  StyleSheet,
+  ActivityIndicator,
+} from "react-native";
 import Colors from "../constants/colors";
 import {
   Menu,
@@ -15,15 +22,11 @@ import { AntDesign } from "@expo/vector-icons";
 import { Ionicons } from "@expo/vector-icons";
 import AchivementsDisplay from "../components/Profile/AchivementsDisplay";
 import { useNavigation } from "@react-navigation/native";
-import { auth, db, storage } from "../firebaseConfig";
-import { useContext, useState } from "react";
-import { AuthContext } from "../store/auth-context";
-import { UserContext } from "../store/user-context";
 import ChartDisplay from "../components/Profile/ChartDisplay";
-import { doc, getDoc } from "firebase/firestore";
-import { ActivityIndicator } from "react-native";
-import { useEffect } from "react";
-import { ref, getDownloadURL } from "firebase/storage";
+import { collection, doc, getDoc, query } from "firebase/firestore";
+import { db, storage } from "../firebaseConfig";
+import { useEffect, useState } from "react";
+import { getDownloadURL, ref } from "firebase/storage";
 
 const DUMMY_USER = {
   name: "Robert",
@@ -47,38 +50,31 @@ const DUMMY_USER = {
   ],
 };
 
-function ProfileScreen() {
+function FriendProfileScreen({ route }) {
+  const id = route.params.id;
+
   const insets = useSafeAreaInsets();
 
   const navigation = useNavigation();
 
   const Tab = createMaterialTopTabNavigator();
 
-  const authCtx = useContext(AuthContext);
-  const userCtx = useContext(UserContext);
+  const [userData, setUserData] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [image,setImage] = useState();
 
-  const [image, setImage] = useState();
-  const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState({});
+  //FECHING DATA
 
   useEffect(() => {
-    fetchUser();
+    getUser();
   }, []);
 
-  async function fetchUser() {
-    setIsLoading(true);
+  async function getUser() {
+    setLoading(true);
+    const user = await getDoc(doc(db, `users/${id}`));
+    setUserData({ id: user.id, ...user.data() });
     try {
-      const data = await getDoc(doc(db, `users/${userCtx.id}`));
-      const readyUser = { id: data.id, ...data.data() };
-      setUser(readyUser);
-      setIsLoading(false);
-    } catch (e) {
-      console.log(e);
-    }
-    try {
-      const url = await getDownloadURL(
-        ref(storage, `users/${userCtx.id}/photo.jpg`)
-      );
+      const url = await getDownloadURL(ref(storage, `users/${id}/photo.jpg`));
       setImage(url);
     } catch (e) {
       console.log(e);
@@ -93,6 +89,11 @@ function ProfileScreen() {
         }
       }
     }
+    setLoading(false);
+  }
+
+  function goBackHandler() {
+    navigation.goBack();
   }
 
   return (
@@ -102,58 +103,64 @@ function ProfileScreen() {
         { paddingTop: insets.top + 15, paddingBottom: insets.bottom },
       ]}
     >
-      <View style={styles.header}>
-        <Menu>
-          <MenuTrigger>
-            <Entypo name="dots-three-vertical" size={30} color="white" />
-          </MenuTrigger>
-          <MenuOptions
-            customStyles={{
-              optionsContainer: styles.info,
-              optionText: styles.infoText,
-              optionsWrapper: styles.infoWraper,
-            }}
-          >
-            <MenuOption
-              onSelect={() => navigation.navigate("edit-profile")}
-              text="Edit profile"
-            />
-            <Divider />
-            <MenuOption
-              onSelect={() => navigation.navigate("edit-shelf")}
-              text="Edit shelf"
-            />
-            <Divider />
-            <MenuOption
-              onSelect={() =>
-                navigation.navigate("profile-stats", { id: userCtx.id })
-              }
-              text="Stats"
-            />
-            <Divider />
-            <MenuOption
-              onSelect={() => navigation.navigate("friends-display")}
-              text="Friends"
-            />
-            <Divider />
-            <MenuOption
-              customStyles={{
-                optionText: styles.infoTextRed,
-              }}
-              onSelect={() => {
-                authCtx.logout();
-                auth.signOut();
-                userCtx.delUser();
-              }}
-              text="Log out"
-            />
-          </MenuOptions>
-        </Menu>
-      </View>
-      {!isLoading ? (
+      {loading ? (
+        <View
+          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+        >
+          <ActivityIndicator size={"large"} color={Colors.accent500} />
+        </View>
+      ) : (
         <>
-          <Image style={styles.image} source={{ uri: image }} />
-          <Text style={styles.userName}>{user.name}</Text>
+          <View style={styles.header}>
+            <Pressable onPress={goBackHandler}>
+              <Ionicons name="chevron-back" size={42} color="white" />
+            </Pressable>
+            <Menu>
+              <MenuTrigger>
+                <Entypo name="dots-three-vertical" size={30} color="white" />
+              </MenuTrigger>
+              <MenuOptions
+                customStyles={{
+                  optionsContainer: styles.info,
+                  optionText: styles.infoText,
+                  optionsWrapper: styles.infoWraper,
+                }}
+              >
+                <MenuOption
+                  onSelect={() => {
+                    alert(id);
+                  }}
+                  text="Share"
+                />
+                <Divider />
+                <MenuOption
+                  onSelect={() =>
+                    navigation.navigate("profile-stats", { id: id })
+                  }
+                  text="Stats"
+                />
+                <Divider />
+                <MenuOption
+                  onSelect={() => navigation.navigate("friends-display")}
+                  text="Friends"
+                />
+                <Divider />
+                <MenuOption
+                  customStyles={{
+                    optionText: styles.infoTextRed,
+                  }}
+                  onSelect={() => {
+                    alert("REMOVED");
+                  }}
+                  text="Remove friend"
+                />
+                <Divider />
+                <MenuOption onSelect={() => {}} text="Report" />
+              </MenuOptions>
+            </Menu>
+          </View>
+          <Image style={styles.image} source={{uri: image}} />
+          <Text style={styles.userName}>{userData.name}</Text>
           <View style={styles.tabContainer}>
             <Tab.Navigator
               screenOptions={{
@@ -186,7 +193,7 @@ function ProfileScreen() {
               <Tab.Screen
                 name="charts"
                 component={ChartDisplay}
-                initialParams={{ id: userCtx.id }}
+                initialParams={{ id: id }}
                 options={{
                   tabBarIcon: ({ focused }) => (
                     <View
@@ -237,18 +244,12 @@ function ProfileScreen() {
             </Tab.Navigator>
           </View>
         </>
-      ) : (
-        <ActivityIndicator
-          size={"large"}
-          color={Colors.accent500}
-          style={{ marginTop: 20 }}
-        />
       )}
     </View>
   );
 }
 
-export default ProfileScreen;
+export default FriendProfileScreen;
 
 const styles = StyleSheet.create({
   root: {
@@ -258,9 +259,10 @@ const styles = StyleSheet.create({
   },
   header: {
     width: "100%",
-    justifyContent: "flex-end",
+    justifyContent: "space-between",
     flexDirection: "row",
     paddingHorizontal: 20,
+    alignItems: "center",
   },
 
   info: {

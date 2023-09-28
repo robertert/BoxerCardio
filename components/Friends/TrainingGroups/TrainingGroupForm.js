@@ -9,29 +9,29 @@ import {
 import Colors from "../../../constants/colors";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
 import { TextInput } from "react-native";
-import { useContext, useState } from "react";
+import { useContext, useState, useEffect } from "react";
 import { FlashList } from "@shopify/flash-list";
 import { UserContext } from "../../../store/user-context";
-import { AntDesign } from "@expo/vector-icons";
-
-function AddNewMember() {
-
-  const navigation = useNavigation();
-
-  function addHandler() {
-    navigation.navigate("add-new-member-form");
-  }
-  return (
-    <Pressable onPress={addHandler}>
-      <View style={styles.footerContainer}>
-        <AntDesign name="plus" size={30} color="white" />
-        <Text style={styles.footerText}>Add new member</Text>
-      </View>
-    </Pressable>
-  );
-}
+import { AntDesign, Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { Alert } from "react-native";
+import {
+  addDoc,
+  collection,
+  writeBatch,
+  doc,
+  arrayUnion,
+} from "firebase/firestore";
+import { db } from "../../../firebaseConfig";
+import {
+  MediaTypeOptions,
+  useCameraPermissions,
+  launchCameraAsync,
+  PermissionStatus,
+  launchImageLibraryAsync,
+} from "expo-image-picker";
+import { Overlay } from "@rneui/themed";
+import Divider from "../../UI/Divider";
 
 function TrainingGroupForm() {
   const insets = useSafeAreaInsets();
@@ -40,21 +40,79 @@ function TrainingGroupForm() {
 
   const userCtx = useContext(UserContext);
 
+  const [cameraPermissionInformation, requestPermission] =
+    useCameraPermissions();
+
   const [tag, setTag] = useState("");
   const [name, setName] = useState("");
   const [members, setMembers] = useState([
     {
-      id: Math.floor(Math.random() * Math.floor(Math.random() * Date.now())),
+      id: userCtx.id,
       name: userCtx.name,
       photoUrl: userCtx.photoUrl,
     },
   ]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [image, setImage] = useState();
+
+  const [isDialogVisible, setIsDialogVisible] = useState(false);
+
+  function toggleIsVisible() {
+    setIsDialogVisible((prev) => !prev);
+  }
+
+  useEffect(() => {
+    setImage();
+  }, []);
+
+  async function verifyPermission() {
+    if (cameraPermissionInformation.status === PermissionStatus.UNDETERMINED) {
+      const permissionResponse = await requestPermission();
+      return permissionResponse.granted;
+    }
+    if (cameraPermissionInformation.status === PermissionStatus.DENIED) {
+      Alert.alert("Error", "Permission not granted");
+      return false;
+    }
+    return true;
+  }
+
+  async function imagePressHandler(type) {
+    const hasPermissions = await verifyPermission();
+    if (!hasPermissions) {
+      return;
+    }
+
+    let result;
+
+    if (type === "camera") {
+      result = await launchCameraAsync({
+        allowsEditing: true,
+        quality: 0.5,
+        aspect: [4, 4],
+      });
+    } else {
+      result = await launchImageLibraryAsync({
+        mediaTypes: MediaTypeOptions.All,
+        allowsEditing: true,
+        quality: 0.5,
+        aspect: [4, 4],
+      });
+    }
+    if (!result.canceled) {
+      setImage(result.assets[0].uri);
+    }
+    toggleIsVisible();
+  }
 
   function goBackHandler() {
     navigation.goBack();
   }
 
-  function settingsHandler(){}
+  function settingsHandler() {
+    navigation.navigate("training-group-settings", { teamId: null });
+  }
 
   function tagChangeHandler(givenTag) {
     setTag(givenTag.toUpperCase());
@@ -63,11 +121,42 @@ function TrainingGroupForm() {
   function nameChangeHandler(givenName) {
     setName(givenName);
   }
-  function submitHandler(){
+  async function submitHandler() {
+    //DODAĆ TEAM DO LISTY
+    setIsLoading(true);
+    try {
+      const uid =
+        Date.now().toString(36) + Math.random().toString(36).substr(2);
 
-    //DODAĆ TEAM DO LISTY 
+      const batch = writeBatch(db);
 
-    navigation.goBack();
+      batch.set(doc(db, `trainingGroups/${uid}`), {
+        banerUrl: "url",
+        createdAt: new Date(),
+        members: members,
+        membersNum: 1,
+        name: name,
+        settings: {
+          //DODAĆ DEFAULT SETTINGS
+        },
+        stats: {},
+        tag: tag,
+      });
+      batch.update(doc(db, `users/${userCtx.id}`), {
+        trainingGroups: arrayUnion({
+          id: uid,
+          name: name,
+          membersNum: 1,
+          rank: 1,
+          photoUrl: "url",
+        }),
+      });
+      await batch.commit();
+      navigation.goBack();
+    } catch (e) {
+      console.log(e);
+      Alert.alert("Error", "There was an error. Try again later");
+    }
   }
 
   function renderMemberHandler(itemData) {
@@ -86,7 +175,12 @@ function TrainingGroupForm() {
 
   return (
     <ScrollView style={{ flex: 1 }}>
-      <View style={[styles.root, { paddingTop: insets.top + 10, paddingBottom: insets.bottom }]}>
+      <View
+        style={[
+          styles.root,
+          { paddingTop: insets.top + 10, paddingBottom: insets.bottom },
+        ]}
+      >
         <View style={styles.header}>
           <Pressable onPress={goBackHandler}>
             <Ionicons name="chevron-back" size={42} color="white" />
@@ -95,12 +189,12 @@ function TrainingGroupForm() {
             <Ionicons name="md-settings-sharp" size={35} color="white" />
           </Pressable>
         </View>
-        <View style={styles.imageContainer}>
-          <Image
-            style={styles.image}
-            source={require("../../../assets/icon.png")}
-          />
-        </View>
+        <Pressable onPress={toggleIsVisible}>
+          <View style={styles.imageContainer}>
+            <Image source={{ uri: image }} style={styles.img} />
+            <Text style={styles.infoPhoto}>Press to change photo</Text>
+          </View>
+        </Pressable>
         <View style={styles.inputContainer}>
           <View style={styles.shortContainer}>
             <Text style={styles.text}>Tag</Text>
@@ -131,15 +225,35 @@ function TrainingGroupForm() {
             renderItem={renderMemberHandler}
             keyExtractor={(item) => item.id}
             estimatedItemSize={50}
-            ListFooterComponent={AddNewMember}
           />
         </View>
         <Pressable onPress={submitHandler}>
-        <View style={styles.submitButton}>
+          <View style={styles.submitButton}>
             <Text style={styles.submitText}>Submit</Text>
-        </View>
+          </View>
         </Pressable>
       </View>
+      <Overlay
+        isVisible={isDialogVisible}
+        onBackdropPress={toggleIsVisible}
+        overlayStyle={styles.dialogContainer}
+      >
+        <View style={styles.optionsContainer}>
+          <Pressable onPress={imagePressHandler.bind(this, "library")}>
+            <View style={styles.optionContainer}>
+              <MaterialIcons name="photo-library" size={24} color="white" />
+              <Text style={styles.dialogOption}>Chose photo from library</Text>
+            </View>
+          </Pressable>
+          <Divider />
+          <Pressable onPress={imagePressHandler.bind(this, "camera")}>
+            <View style={styles.optionContainer}>
+              <MaterialIcons name="photo-camera" size={24} color="white" />
+              <Text style={styles.dialogOption}>Take new photo</Text>
+            </View>
+          </Pressable>
+        </View>
+      </Overlay>
     </ScrollView>
   );
 }
@@ -159,11 +273,20 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     flexDirection: "row",
   },
-  imageContainer: {},
-  image: {
+  imageContainer: {
+    alignItems: "center",
+  },
+  img: {
     height: 120,
     width: 230,
     borderRadius: 20,
+  },
+  infoPhoto: {
+    marginTop: 10,
+    marginBottom: 20,
+    color: Colors.primary100,
+    fontSize: 15,
+    fontWeight: "700",
   },
   inputContainer: {
     width: "70%",
@@ -239,18 +362,7 @@ const styles = StyleSheet.create({
     width: 44,
     borderRadius: 22,
   },
-  footerContainer: {
-    height: 50,
-    flexDirection: "row",
-    marginHorizontal: 20,
-    alignItems: "center",
-  },
-  footerText: {
-    marginHorizontal: 15,
-    color: Colors.primary100,
-    fontSize: 20,
-  },
-  submitButton:{
+  submitButton: {
     backgroundColor: Colors.accent500,
     borderRadius: 30,
     height: 60,
@@ -259,9 +371,28 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  submitText:{
+  submitText: {
     color: Colors.primary100,
     fontSize: 27,
     fontWeight: "600",
-  }
+  },
+  dialogContainer: {
+    backgroundColor: Colors.primary500,
+    borderRadius: 20,
+  },
+  dialogOption: {
+    marginVertical: 15,
+    fontSize: 20,
+    color: Colors.primary100,
+    marginHorizontal: 10,
+    fontWeight: "700",
+  },
+  optionsContainer: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  optionContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
 });

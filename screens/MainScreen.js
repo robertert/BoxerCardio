@@ -1,9 +1,4 @@
-import {
-  View,
-  Text,
-  StyleSheet,
-  ActivityIndicator,
-} from "react-native";
+import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
 import { auth } from "../firebaseConfig";
 import Header from "../components/UI/Header";
 import Colors, { DUMMY_LIST } from "../constants/colors";
@@ -23,12 +18,10 @@ import {
 import { useEffect, useRef, useState } from "react";
 import Share from "../components/MainScreen/Share";
 import GestureRecognizer from "react-native-swipe-gestures";
+import { encode } from "firebase-functions/lib/common/providers/https";
 const LIMIT = 10;
-let last; 
+let last;
 function MainScreen({ navigation }) {
-
-  
-
   //  przy ponownym nacisnieciu scroll to the top //////////////////////////////////////////
   const ref = useRef();
   useEffect(() => {
@@ -47,7 +40,10 @@ function MainScreen({ navigation }) {
   const [refresh, setRefresh] = useState(false);
   const [isErrorRender, setIsErrorRender] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isEmpty, setIsEmpty] = useState(false);
+  const [lastDoc, setLastDoc] = useState();
+  const [posts, setPosts] = useState([]);
+  const [isFirstLoading, setIsFirstLoading] = useState(true);
+  const [hasNextPage, setHasNextPage] = useState(false);
 
   ////// ALL HANDLERS ////////////////////////////////////////////////////////////////////
 
@@ -65,81 +61,102 @@ function MainScreen({ navigation }) {
   }
 
   function renderListHandler(itemData) {
+    const item = itemData.item;
     return (
       <Post
-        name={itemData.item.userName}
+        likes={item.likes}
+        likesNum={item.likesNum}
+        commentsNum={item.commentsNum}
+        userId={item.userId}
+        name={item.userName}
         onShare={shareHandler}
-        id={itemData.item.id}
+        id={item.id}
       />
     );
   }
 
-
   ////// FETCHING POSTS ///////////////////////////////////////////////////////////////////////////////
 
+  useEffect(() => {
+    initialFetchPosts();
+  }, []);
 
-  async function fetchPosts(pageParam) {
+  async function initialFetchPosts() {
+    setIsFirstLoading(true);
     try {
       const posts = await getDocs(
         query(
           collection(db, "posts"),
           orderBy("userName"),
-          startAfter(last ? last : 1),
           limit(10) //   ZMIENIĆ POŹNIEJ NA DOBRZE i setERRROT TEŻ  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         )
       );
-      last = posts.docs[posts.docs.length - 1];
-      //console.log(last);
+      const lastD = posts.docs[posts.docs.length - 1];
+      setLastDoc(lastD);
+
       let readyPosts = [];
-      if (posts.empty && flattenData?.length === 0) {
-        setIsEmpty(true);
-      } else {
-        setIsEmpty(false);
-      }
 
       posts.forEach((post) => {
-        readyPosts.push({ id: post.id, ...post.data()});
+        readyPosts.push({ id: post.id, ...post.data() });
       });
-      return readyPosts;
-    } catch (error) {
-      console.log(error);
+
+      if (readyPosts.length === 10) {
+        setHasNextPage(true);
+      } else {
+        setHasNextPage(false);
+      }
+      setIsFirstLoading(false);
+      setPosts([...readyPosts]);
+    } catch (e) {
+      console.log(e);
       setIsErrorRender(false); //////// ZMIENIĆ POŹŃEJ
-      return [];
     }
   }
 
   async function loadNextPage() {
     if (hasNextPage) {
-      console.log("LOADING");
       setIsLoading(true);
-      await fetchNextPage();
-      setIsLoading(false);
+      try {
+        const posts = await getDocs(
+          query(
+            collection(db, "posts"),
+            orderBy("userName"),
+            startAfter(lastDoc),
+            limit(10) //   ZMIENIĆ POŹNIEJ NA DOBRZE i setERRROT TEŻ  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+          )
+        );
+        const lastD = posts.docs[posts.docs.length - 1];
+        setLastDoc(lastD);
+
+        let readyPosts = [];
+
+        posts.forEach((post) => {
+          readyPosts.push({ id: post.id, ...post.data() });
+        });
+        if (readyPosts.length === 10) {
+          setHasNextPage(true);
+        } else {
+          setHasNextPage(false);
+        }
+        setIsLoading(false);
+        setPosts((prev) => [...prev, ...readyPosts]);
+      } catch (error) {
+        console.log(error);
+        setIsErrorRender(false); //////// ZMIENIĆ POŹŃEJ
+      }
     }
   }
-
-  const { data, fetchNextPage, hasNextPage, refetch } = useInfiniteQuery({
-    queryKey: ["main-page"],
-    queryFn: ({ pageParam = 1 }) => {
-      return fetchPosts(pageParam);
-    },
-    getNextPageParam: (lastPage, allPages) => {
-      const nextPage = lastPage.length === LIMIT ? last : undefined;
-      return nextPage;
-    },
-  });
-
-  const flattenData = data?.pages.flat();
-  //console.log(flattenData);
 
   ///////////////////////////////////////////////////////////////////////////////////////
 
   return (
     <View style={styles.root}>
       <Header settings={true} back={false} />
-      {!isErrorRender ? (
+      {!isFirstLoading ? (
         <FlashList
           ref={ref}
-          data={flattenData}
+          extraData={posts}
+          data={posts}
           renderItem={renderListHandler}
           keyExtractor={(item) => item.id}
           estimatedItemSize={330}
@@ -148,10 +165,14 @@ function MainScreen({ navigation }) {
           refreshing={refresh}
           onRefresh={async () => {
             try {
-              await refetch();
+              setIsErrorRender(false);
+              setRefresh(true);
+              setPosts([]);
+              loadNextPage();
               setRefresh(false);
             } catch (e) {
               console.log(e);
+              setIsErrorRender(true);
             }
           }}
           ListEmptyComponent={
@@ -160,14 +181,14 @@ function MainScreen({ navigation }) {
             </Text>
           }
           ListFooterComponent={
-            isLoading ? (
-              <ActivityIndicator
-                size="large"
-                color={Colors.accent500}
-                style={styles.loading}
-              />
-            ) : (
-              !isEmpty && (
+            !isErrorRender ? (
+              isLoading ? (
+                <ActivityIndicator
+                  size="large"
+                  color={Colors.accent500}
+                  style={styles.loading}
+                />
+              ) : (
                 <View style={styles.footerContainer}>
                   <Text style={styles.footerTextTitle}>That's all</Text>
                   <Text style={styles.footerText}>
@@ -175,17 +196,23 @@ function MainScreen({ navigation }) {
                   </Text>
                 </View>
               )
+            ) : (
+              <View style={styles.footerContainer}>
+                <Text style={styles.footerTextTitle}>Error</Text>
+                <Text style={styles.footerText}>
+                  There was an error while loading. Please check your internet
+                  conection or try again later.
+                </Text>
+              </View>
             )
           }
         />
       ) : (
-        <View style={styles.footerContainer}>
-          <Text style={styles.footerTextTitle}>Error</Text>
-          <Text style={styles.footerText}>
-            There was an error while loading. Please check your internet
-            conection or try again later.
-          </Text>
-        </View>
+        <ActivityIndicator
+          size="large"
+          color={Colors.accent500}
+          style={styles.loading}
+        />
       )}
       <GestureRecognizer onSwipeDown={closeShareHandler}>
         <BottomSheet isVisible={footer} scrollViewProps={{ bounces: false }}>

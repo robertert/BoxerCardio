@@ -6,8 +6,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FlashList } from "@shopify/flash-list";
 import TrainingGroup from "./TrainingGroups/TrainingGroup";
 import { Platform } from "react-native";
-import { post } from "../../firebaseConfig";
+import { db, post } from "../../firebaseConfig";
 import { useNavigation } from "@react-navigation/native";
+import { useContext, useState, useEffect } from "react";
+import { UserContext } from "../../store/user-context";
+import { getDoc, doc } from "firebase/firestore";
+import { ActivityIndicator } from "react-native";
 
 function TrainingGroups() {
   const DUMMY_TEAMS = [
@@ -38,6 +42,27 @@ function TrainingGroups() {
 
   const navigation = useNavigation();
 
+  const userCtx = useContext(UserContext);
+
+  const [teams, setTeams] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [refresh,setRefresh] = useState(false);
+
+  useEffect(() => {
+    fetchTeams();
+  }, []);
+
+  async function fetchTeams() {
+    setIsLoading(true);
+    try {
+      const data = await getDoc(doc(db, `users/${userCtx.id}`));
+      setTeams(data.data().trainingGroups);
+      setIsLoading(false);
+    } catch (e) {
+      console.log(e);
+    }
+  }
+
   function goBackHandler() {
     navigation.goBack();
   }
@@ -48,15 +73,14 @@ function TrainingGroups() {
 
   async function testHandler() {
     try {
-      post("addNewScore",{
+      post("addNewScore", {
         userId: 1,
         score: 10,
-      })
+      });
     } catch (e) {
       console.log("ERROR");
       console.log(e);
     }
-   
   }
 
   function trainingGroupRenderHandler(itemData) {
@@ -65,8 +89,9 @@ function TrainingGroups() {
       <TrainingGroup
         name={item.name}
         rank={item.rank}
-        members={item.members}
+        membersNum={item.membersNum}
         photoUrl={item.photoUrl}
+        id={item.id}
       />
     );
   }
@@ -89,16 +114,32 @@ function TrainingGroups() {
         </Pressable>
       </View>
       <View style={styles.trainingGroupsContainer}>
-        <FlashList
-          data={DUMMY_TEAMS}
-          renderItem={trainingGroupRenderHandler}
-          keyExtractor={(item) => item.id}
-          estimatedItemSize={80}
-        />
+        {!isLoading ? (
+          <FlashList
+            data={teams}
+            renderItem={trainingGroupRenderHandler}
+            keyExtractor={(item) => item.id}
+            estimatedItemSize={80}
+            refreshing={refresh}
+            onRefresh={()=>{
+              setRefresh(true);
+              try {
+                setTeams([]);
+                fetchTeams();
+                setRefresh(false);
+              } catch (e) {
+                console.log(e);
+              }
+            }}
+          />
+        ) : (
+          <ActivityIndicator
+            size={"large"}
+            color={Colors.accent500}
+            style={{ marginTop: 20 }}
+          />
+        )}
       </View>
-      <Pressable onPress={testHandler}>
-        <View style={{ height: 40, width: 60, backgroundColor: "red" }}></View>
-      </Pressable>
     </View>
   );
 }

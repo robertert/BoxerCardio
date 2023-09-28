@@ -2,47 +2,65 @@ import { View, Text, Image, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Colors from "../../../constants/colors";
-import * as SplashScreen from "expo-splash-screen";
-import { useFonts } from "expo-font";
-import { useCallback } from "react";
+import { Pressable } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import { useEffect } from "react";
+import { getDownloadURL, ref } from "firebase/storage";
+import { storage } from "../../../firebaseConfig";
+import { useState } from "react";
 
-function TrainingGroup({ name, photoUrl, rank, members }) {
-  const [fontsLoaded] = useFonts({
-    RubikMono: require("../../../assets/fonts/RubikMonoOne-Regular.ttf"),
-  });
+function TrainingGroup({ name, rank, membersNum, id }) {
+  const navigation = useNavigation();
+  const [image, setImage] = useState();
 
-  const onLayoutRootView = useCallback(async () => {
-    if (fontsLoaded) {
-      await SplashScreen.hideAsync();
+  useEffect(() => {
+    async function fetchPhoto() {
+      try {
+        const url = await getDownloadURL(
+          ref(storage, `trainingGroups/${id}/photo.jpg`)
+        );
+        setImage(url);
+      } catch (e) {
+        console.log(e);
+        if (e.code === "storage/object-not-found") {
+          try {
+            const url = await getDownloadURL(
+              ref(storage, `users/defaultPhoto.jpg`)
+            );
+
+            setImage(url);
+          } catch (e) {
+            console.log(e);
+          }
+        }
+      }
     }
-  }, [fontsLoaded]);
+    fetchPhoto();
+  }, []);
 
-  if (!fontsLoaded) {
-    return null;
+  function detailsHandler() {
+    navigation.navigate("training-groups-details", { id: id });
   }
 
-
-
   return (
-    <View style={styles.root} onLayout={onLayoutRootView}>
-      <Image
-        style={styles.image}
-        source={require("../../../assets/icon.png")}
-      />
-      <View style={styles.groupContainer}>
-        <Text style={styles.groupTitle}>{name}</Text>
-        <View style={styles.groupDetails}>
-          <View style={styles.detailsSubcontainer}>
-            <Ionicons name="person" size={24} color="white" />
-            <Text style={styles.groupDetailsText}>{members}</Text>
-          </View>
-          <View style={styles.detailsSubcontainer}>
-            <MaterialCommunityIcons name="podium" size={24} color="white" />
-            <Text style={styles.groupDetailsText}>{rank}</Text>
+    <Pressable onPress={detailsHandler}>
+      <View style={styles.root}>
+        <Image style={styles.image} source={{ uri: image }} />
+        <View style={styles.groupContainer}>
+          <Text style={styles.groupTitle}>{name}</Text>
+          <View style={styles.groupDetails}>
+            <View style={styles.detailsSubcontainer}>
+              <Ionicons name="person" size={24} color="white" />
+              <Text style={styles.groupDetailsText}>{membersNum}</Text>
+            </View>
+            <View style={styles.detailsSubcontainer}>
+              <MaterialCommunityIcons name="podium" size={24} color="white" />
+              <Text style={styles.groupDetailsText}>{rank}</Text>
+            </View>
           </View>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
