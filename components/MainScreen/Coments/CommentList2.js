@@ -1,7 +1,7 @@
 import Comment from "./Comment";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import Colors from "../../../constants/colors";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { db } from "../../../firebaseConfig";
 import { useEffect, useState } from "react";
 import { ActivityIndicator } from "react-native";
@@ -20,7 +20,9 @@ function CommentList2({ postId, parentId, id, onHide, onReply, level }) {
     let docPath;
     setIsLoading(true);
     docPath = `posts/${postId}/comments/${parentId}/responses/${id}/responses`;
-    const responsesFeched = await getDocs(collection(db, docPath));
+    const responsesFeched = await getDocs(
+      query(collection(db, docPath), orderBy("createDate", "desc"))
+    );
     responsesFeched.forEach((res) => {
       responses.push({ id: res.id, ...res.data() });
     });
@@ -36,7 +38,6 @@ function CommentList2({ postId, parentId, id, onHide, onReply, level }) {
     grandparentId = parentId;
   }, []);
 
-
   return (
     <View style={{ flex: 1 }}>
       {isLoading ? (
@@ -45,6 +46,7 @@ function CommentList2({ postId, parentId, id, onHide, onReply, level }) {
         responses.map((item) => {
           return (
             <Comment
+              type={item.type}
               userId={item.userId}
               postId={postId}
               name={item.name}

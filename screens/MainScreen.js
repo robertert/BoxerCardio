@@ -1,10 +1,9 @@
 import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
 import { auth } from "../firebaseConfig";
 import Header from "../components/UI/Header";
-import Colors, { DUMMY_LIST } from "../constants/colors";
+import Colors from "../constants/colors";
 import Post from "../components/MainScreen/Post";
 import { FlashList } from "@shopify/flash-list";
-import { useInfiniteQuery } from "@tanstack/react-query";
 import { db } from "../firebaseConfig";
 import { BottomSheet } from "@rneui/themed";
 import {
@@ -18,7 +17,6 @@ import {
 import { useEffect, useRef, useState } from "react";
 import Share from "../components/MainScreen/Share";
 import GestureRecognizer from "react-native-swipe-gestures";
-import { encode } from "firebase-functions/lib/common/providers/https";
 const LIMIT = 10;
 let last;
 function MainScreen({ navigation }) {
@@ -64,6 +62,8 @@ function MainScreen({ navigation }) {
     const item = itemData.item;
     return (
       <Post
+        createDate={item.createdAt}
+        description={item.description}
         likes={item.likes}
         likesNum={item.likesNum}
         commentsNum={item.commentsNum}

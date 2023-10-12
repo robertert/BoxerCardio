@@ -132,7 +132,9 @@ function ProfileScreen() {
             />
             <Divider />
             <MenuOption
-              onSelect={() => navigation.navigate("friends-display")}
+              onSelect={() =>
+                navigation.navigate("friends-display", { id: userCtx.id })
+              }
               text="Friends"
             />
             <Divider />

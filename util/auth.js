@@ -27,6 +27,8 @@ async function signIn(email, password,authCtx,userCtx, name) {
       photoUrl: "url",
       email: email,
       friends: [],
+      pending: [],
+      incoming: [],
       trainingGroups: [],
       achivements: [],
       postsPreview: [],

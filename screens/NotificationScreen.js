@@ -138,6 +138,7 @@ function NotificationScreen() {
     if (item.groupId) {
       return (
         <Notification
+          createDate={item.createTime}
           groupPhotoUrl={item.groupPhotoUrl}
           groupName={item.groupName}
           groupId={item.groupId}
@@ -152,6 +153,8 @@ function NotificationScreen() {
     }
     return (
       <Notification
+        name={item.name}
+        createDate={item.createTime}
         id={item.id}
         type={item.type}
         text={item.text}

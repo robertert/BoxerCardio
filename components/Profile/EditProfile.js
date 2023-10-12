@@ -215,7 +215,6 @@ function EditProfile() {
         ref(storage, `users/${userCtx.id}/photo.jpg`)
       );
 
-      console.log(url);
       setImage(url);
     } catch (e) {
       console.log(e);

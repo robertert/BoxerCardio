@@ -6,7 +6,14 @@ import Post from "../MainScreen/Post";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import { collection, getDocs, query, orderBy, limit } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  query,
+  orderBy,
+  limit,
+  startAfter,
+} from "firebase/firestore";
 import { db } from "../../firebaseConfig";
 import { UserContext } from "../../store/user-context";
 
@@ -42,13 +49,13 @@ function PostsDisplayDetails() {
   const [posts, setPosts] = useState([]);
   const [lastDoc, setLastDoc] = useState();
   const [hasNextPage, setHasNextPage] = useState(true);
+  const [refresh, setRefresh] = useState(false);
 
   const insets = useSafeAreaInsets();
 
   const navigation = useNavigation();
 
   const userCtx = useContext(UserContext);
-npx 
   useEffect(() => {
     initialfetchPosts();
   }, []);
@@ -56,7 +63,7 @@ npx
   async function initialfetchPosts() {
     setIsFirstLoading(true);
     try {
-      const data = await getDocs(
+      const posts = await getDocs(
         query(
           collection(db, `users/${userCtx.id}/posts`),
           orderBy("createdAt"),
@@ -69,7 +76,7 @@ npx
       const lastD = posts.docs[posts.docs.length - 1];
       setLastDoc(lastD);
 
-      data.forEach((post) => {
+      posts.forEach((post) => {
         readyPosts.push({ id: post.id, ...post.data() });
       });
       if (readyPosts.length === 10) {
@@ -128,6 +135,8 @@ npx
     const item = itemData.item;
     return (
       <Post
+        createDate={item.createdAt}
+        description={item.description}
         likes={item.likes}
         likesNum={item.likesNum}
         commentsNum={item.commentsNum}
@@ -150,7 +159,7 @@ npx
           <Ionicons name="chevron-back" size={42} color="white" />
         </Pressable>
       </View>
-      {isFirstLoading ? (
+      {!isFirstLoading ? (
         <FlashList
           extraData={posts}
           data={posts}
@@ -160,9 +169,11 @@ npx
           onEndReachedThreshold={0.5}
           onEndReached={loadNextPage}
           refreshing={refresh}
-          onRefresh={() => {
+          onRefresh={async () => {
             setIsError(false);
-            initialfetchPosts();
+            setRefresh(true);
+            await initialfetchPosts();
+            setRefresh(false);
           }}
           ListFooterComponent={
             isLoading && (

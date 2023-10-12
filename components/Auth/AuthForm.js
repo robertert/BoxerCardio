@@ -110,14 +110,14 @@ function AuthForm() {
   async function submitRegisterHandler() {
     if (validateRegister()) {
       setIsLoading(true);
-      await authenticate("signIn", email, password, authCtx, userCtx,username);
+      await authenticate("signIn", email.trim(), password.trim(), authCtx, userCtx,username.trim());
       setIsLoading(false);
     }
   }
 
   async function logInHandler() {
     setIsLoading(true);
-    await authenticate("logIn", email, password, authCtx, userCtx);
+    await authenticate("logIn", email.trim(), password.trim(), authCtx, userCtx);
     setIsLoading(false);
   }
 

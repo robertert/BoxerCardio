@@ -26,18 +26,39 @@ import { useEffect } from "react";
 import Divider from "../UI/Divider";
 import { getDownloadURL, ref } from "firebase/storage";
 
-function Post({ name, onShare, id, userId, likesNum, commentsNum, likes }) {
+function Post({
+  name,
+  onShare,
+  id,
+  userId,
+  likesNum,
+  commentsNum,
+  likes,
+  description,
+  createDate,
+}) {
   const [isLiked, setIsLiked] = useState(false);
   const [likeNum, setLikeNum] = useState(0);
   const [commentNum, setCommentNum] = useState(0);
   const [image, setImage] = useState();
   const [postImage, setPostImage] = useState();
+  const [desc, setDesc] = useState(description);
+  const [showMore, setShowMore] = useState("Show more");
+  const [isVisibleMore, setIsVisibleMore] = useState(false);
+  const [showDesc, setShowDesc] = useState(true);
+  const [time, setTime] = useState("");
 
   const userCtx = useContext(UserContext);
   const navigation = useNavigation();
 
   useEffect(() => {
-    async function fetchNums() {
+    async function fetchFooter() {
+      if (description === undefined || description === "") {
+        setShowDesc(false);
+      } else if (description.length > 36) {
+        setDesc(description.substring(0, 36));
+        setIsVisibleMore(true);
+      }
       setLikeNum(likesNum);
       setCommentNum(commentsNum);
       if (likes.filter((like) => like.id === userCtx.id).length !== 0) {
@@ -84,9 +105,71 @@ function Post({ name, onShare, id, userId, likesNum, commentsNum, likes }) {
         }
       }
     }
+    function fetchTime() {
+      console.log(createDate);
+      const creationDate = createDate?.toDate();
+      const timeDifference =
+        (new Date().getTime() - creationDate?.getTime()) / 1000;
+      if (timeDifference < 60) {
+        setTime("just now");
+      } else if (timeDifference >= 60 && timeDifference / 60 < 60) {
+        const mins = Math.floor(timeDifference / 60);
+        if (mins === 1) {
+          setTime(`1 minute ago`);
+        } else {
+          setTime(`${mins} minutes ago`);
+        }
+      } else if (timeDifference / 60 >= 60 && timeDifference / (60 * 60) < 24) {
+        const hours = Math.floor(timeDifference / (60 * 60));
+        if (hours === 1) {
+          setTime(`1 hour ago`);
+        } else {
+          setTime(`${hours} hours ago`);
+        }
+      } else if (
+        timeDifference / (60 * 60) >= 24 &&
+        timeDifference / (60 * 60 * 24) < 2
+      ) {
+        setTime("yesterday");
+      } else if (
+        timeDifference / (60 * 60 * 24) >= 2 &&
+        timeDifference / (60 * 60 * 24) < 7
+      ) {
+        const days = Math.floor(timeDifference / (60 * 60 * 24));
+        setTime(`${days} days ago`);
+      } else if (
+        timeDifference / (60 * 60 * 24) >= 7 &&
+        timeDifference / (60 * 60 * 24) < 30
+      ) {
+        const weeks = Math.floor(timeDifference / (60 * 60 * 24 * 7));
+        if (weeks === 1) {
+          setTime("1 week ago");
+        } else {
+          setTime(`${weeks} weeks ago`);
+        }
+      } else if (
+        timeDifference / (60 * 60 * 24) >= 30 &&
+        timeDifference / (60 * 60 * 24) < 365
+      ) {
+        const months = Math.floor(timeDifference / (60 * 60 * 24 * 30));
+        if (months === 1) {
+          setTime("1 months ago");
+        } else {
+          setTime(`${months} month ago`);
+        }
+      } else {
+        const years = Math.floor(timeDifference / (60 * 60 * 24 * 365));
+        if (years === 1) {
+          setTime("1 year ago");
+        } else {
+          setTime(`${years} years ago`);
+        }
+      }
+    }
+    fetchTime();
     fetchPostImage();
     fetchPhoto();
-    fetchNums();
+    fetchFooter();
   }, []);
 
   function viewProfileHandler() {
@@ -124,7 +207,17 @@ function Post({ name, onShare, id, userId, likesNum, commentsNum, likes }) {
   function shareHandler() {
     onShare();
   }
-  let test = "This is the description. This is the";
+
+  function showMoreHandler() {
+    if (showMore === "Show more") {
+      setDesc(description);
+      setShowMore("Show less");
+    } else {
+      setDesc(description.substring(0, 36).concat("..."));
+      setShowMore("Show more");
+    }
+  }
+
   return (
     <View style={styles.root}>
       <View style={styles.head}>
@@ -191,9 +284,24 @@ function Post({ name, onShare, id, userId, likesNum, commentsNum, likes }) {
             </Pressable>
           </View>
         </View>
-        <View style={styles.descriptionContainer}>
-          <Text style={styles.descriptionText}></Text>
-        </View>
+        {showDesc && (
+          <View style={styles.descriptionContainer}>
+            <Text style={styles.descriptionText}>{desc}</Text>
+            {isVisibleMore && (
+              <Pressable onPress={showMoreHandler}>
+                <Text
+                  style={[
+                    styles.descriptionText,
+                    { color: Colors.primary100_30 },
+                  ]}
+                >
+                  {showMore}
+                </Text>
+              </Pressable>
+            )}
+          </View>
+        )}
+        <Text style={styles.timeText}>{time}</Text>
       </View>
     </View>
   );
@@ -290,5 +398,12 @@ const styles = StyleSheet.create({
     height: 200,
     width: "100%",
     borderRadius: 20,
+  },
+  timeText: {
+    marginTop: 10,
+    marginLeft: 25,
+    color: Colors.primary100_30,
+    fontSize: 10,
+    fontWeight: "600",
   },
 });

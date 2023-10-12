@@ -57,12 +57,13 @@ const DUMMY_FRIENDS = [
   },
 ];
 
-function FriendsDisplay() {
+function FriendsDisplay({route}) {
   const insets = useSafeAreaInsets();
 
   const navigation = useNavigation();
 
-  const userCtx = useContext(UserContext);
+
+  const id = route.params.id;
 
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
@@ -77,7 +78,7 @@ function FriendsDisplay() {
   async function fetchFriends() {
     setIsLoading(true);
     try {
-      const data = await getDoc(doc(db, `users/${userCtx.id}`));
+      const data = await getDoc(doc(db, `users/${id}`));
       const gotFriends = data.data().friends;
       setFriends([...gotFriends]);
       setIsLoading(false);
