@@ -85,6 +85,7 @@ function TrainingGroups() {
 
   function trainingGroupRenderHandler(itemData) {
     const item = itemData.item;
+    console.log(item.membersNum);
     return (
       <TrainingGroup
         name={item.name}

@@ -15,6 +15,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { AuthContext } from "../../store/auth-context";
 import { useNavigation } from "@react-navigation/native";
 import { UserContext } from "../../store/user-context";
+import { SettingsContext } from "../../store/settings-context";
 
 function AuthForm() {
   const [username, setUsername] = useState();
@@ -30,6 +31,7 @@ function AuthForm() {
 
   const authCtx = useContext(AuthContext);
   const userCtx = useContext(UserContext);
+  const settingsCtx = useContext(SettingsContext);
   const navigation = useNavigation();
 
   const usernameChangeHandler = (enteredUsername) => {
@@ -59,7 +61,11 @@ function AuthForm() {
   }
 
   function validateRegister() {
-    if (username.trim().length < 2 || !isAlphanumeric(username)|| username.trim().length > 15) {
+    if (
+      username.trim().length < 2 ||
+      !isAlphanumeric(username) ||
+      username.trim().length > 15
+    ) {
       // dodac czy unikalna
       setInvaildUsername(true);
       authCtx.changeMessage(
@@ -110,14 +116,29 @@ function AuthForm() {
   async function submitRegisterHandler() {
     if (validateRegister()) {
       setIsLoading(true);
-      await authenticate("signIn", email.trim(), password.trim(), authCtx, userCtx,username.trim());
+      await authenticate(
+        "signIn",
+        email.trim(),
+        password.trim(),
+        authCtx,
+        userCtx,
+        username.trim(),
+        settingsCtx
+      );
       setIsLoading(false);
     }
   }
 
   async function logInHandler() {
     setIsLoading(true);
-    await authenticate("logIn", email.trim(), password.trim(), authCtx, userCtx);
+    await authenticate(
+      "logIn",
+      email.trim(),
+      password.trim(),
+      authCtx,
+      userCtx,
+      settingsCtx
+    );
     setIsLoading(false);
   }
 
@@ -131,7 +152,6 @@ function AuthForm() {
       <View style={styles.rootContainer}>
         <ScrollView style={styles.scrollview}>
           <View style={styles.innerContainer}>
-            
             <View>
               <Image
                 source={require("../../assets/icon.png")}
@@ -185,7 +205,6 @@ function AuthForm() {
       <View style={styles.rootContainer}>
         <ScrollView style={styles.scrollview}>
           <View style={styles.innerContainer}>
-          
             <View>
               <Image
                 source={require("../../assets/icon.png")}

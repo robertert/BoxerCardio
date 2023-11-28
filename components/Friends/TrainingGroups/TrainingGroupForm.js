@@ -49,7 +49,7 @@ function TrainingGroupForm() {
     {
       id: userCtx.id,
       name: userCtx.name,
-      photoUrl: userCtx.photoUrl,
+      isOwner: true,
     },
   ]);
   const [isLoading, setIsLoading] = useState(false);
@@ -137,18 +137,16 @@ function TrainingGroupForm() {
         membersNum: 1,
         name: name,
         settings: {
-          //DODAĆ DEFAULT SETTINGS
+          isAllowedMembersInvitations: true,
         },
         stats: {},
         tag: tag,
       });
       batch.update(doc(db, `users/${userCtx.id}`), {
+        permissions: arrayUnion({ id: uid, type: "owner" }),
         trainingGroups: arrayUnion({
           id: uid,
           name: name,
-          membersNum: 1,
-          rank: 1,
-          photoUrl: "url",
         }),
       });
       await batch.commit();

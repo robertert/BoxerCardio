@@ -7,14 +7,14 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import UserContextProvider from "./store/user-context";
 import CommentContextProvider from "./store/comment-context";
 import ShelfContextProvider from "./store/shelf-context";
+import SettingsContextProvider from "./store/settings-context";
 SplashScreen.preventAutoHideAsync();
-const queryClient = new QueryClient();
 
 export default function App() {
   return (
     <SafeAreaProvider>
       <MenuProvider>
-        <QueryClientProvider client={queryClient}>
+        <SettingsContextProvider>
           <ShelfContextProvider>
             <UserContextProvider>
               <CommentContextProvider>
@@ -24,7 +24,7 @@ export default function App() {
               </CommentContextProvider>
             </UserContextProvider>
           </ShelfContextProvider>
-        </QueryClientProvider>
+        </SettingsContextProvider>
       </MenuProvider>
     </SafeAreaProvider>
   );

@@ -27,6 +27,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../../../firebaseConfig";
 import { UserContext } from "../../../store/user-context";
+import { SettingsContext } from "../../../store/settings-context";
 
 const { Popover } = renderers;
 
@@ -71,19 +72,36 @@ function TrainingGroupDetails({ route }) {
   const [timeRange, setTimeRange] = useState("Today");
   const [isDialogVisible, setIsDialogVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isOwner, setIsOwner] = useState(true);
+  const [isAllowedInvitations, setIsAllowedInvitations] = useState();
+  const [isVisible, setIsVisible] = useState(false);
 
   const [team, setTeam] = useState({});
 
   const userCtx = useContext(UserContext);
+  const settingsCtx = useContext(SettingsContext);
 
   useEffect(() => {
     fetchDetails();
   }, []);
 
+  useEffect(() => {
+    if (isVisible)
+      setTimeout(() => {
+        setIsVisible(false);
+      }, 5000);
+  }, [isVisible]);
+
   async function fetchDetails() {
     setIsLoading(true);
     const data = await getDoc(doc(db, `trainingGroups/${id}`));
     setTeam({ id: data.id, ...data.data() });
+    setIsAllowedInvitations(data.data().settings.isAllowedMembersInvitations);
+    setIsOwner(
+      settingsCtx.permissions.filter(
+        (perm) => perm.id === data.id && perm.type === "owner"
+      ).length > 0
+    );
     setIsLoading(false);
   }
 
@@ -108,7 +126,10 @@ function TrainingGroupDetails({ route }) {
   }
 
   function settingsSelectHandler() {
-    navigation.navigate("training-group-settings", { teamId: team.id });
+    navigation.navigate("training-group-settings", {
+      settings: team.settings,
+      id: team.id,
+    });
   }
 
   function shareSelectHandler() {
@@ -130,6 +151,14 @@ function TrainingGroupDetails({ route }) {
     toggleIsVisible();
   }
 
+  function membersListHandler() {
+    navigation.navigate("member-list", {
+      teamId: team.id,
+      teamName: team.name,
+      isOwner: isOwner,
+      members: team.members,
+    });
+  }
   async function quitTrainingGroupHandler() {
     toggleIsVisible();
     //usunac z dzisiejszych tabeli
@@ -139,21 +168,40 @@ function TrainingGroupDetails({ route }) {
       const readyTrainingGroups = prevData.trainingGroups.filter((group) => {
         group.id !== id;
       });
-      transaction.update(doc(db, `users/${userCtx.id}`), {
-        trainingGroups: readyTrainingGroups,
-      });
-
+      const readyPermissions = prevData.permissions.filter(
+        (perm) => perm.id !== id && perm.type !== "invitations"
+      );
       const groupData = await transaction.get(doc(db, `trainingGroups/${id}`));
       const prevGroupData = groupData.data();
-
       const readyMembers = prevGroupData.members.filter(
         (memb) => memb.id !== userCtx.id
       );
-      // DOKONCZYĆ USUWANIE
-      transaction.update(doc(db, `trainingGroups/${id}`), {
-        membersNum: prevGroupData.membersNum - 1,
-        members: readyMembers,
+
+      if (
+        prevData.permissions.filter(
+          (perm) => perm.id === id && perm.type === "owner"
+        ).length > 0
+      ) {
+        setIsVisible(true);
+        return;
+      }
+      
+      if (readyMembers.length === 0) {
+        transaction.delete(doc(db, `trainingGroups/${id}`));
+      } else {
+        transaction.update(doc(db, `trainingGroups/${id}`), {
+          membersNum: prevGroupData.membersNum - 1,
+          members: readyMembers,
+        });
+      }
+      // SPRAWDZIC CZY DZIAŁA WYCHODZENIE Z TEAMU I USUWANIE Z TEAMU
+      
+      transaction.update(doc(db, `users/${userCtx.id}`), {
+        trainingGroups: readyTrainingGroups,
+        permissions: readyPermissions,
       });
+      
+      // DOKONCZYĆ USUWANIE
     });
   }
 
@@ -179,15 +227,25 @@ function TrainingGroupDetails({ route }) {
               optionsWrapper: styles.infoWraper,
             }}
           >
-            <MenuOption onSelect={settingsSelectHandler} text="Settings" />
+            <MenuOption onSelect={membersListHandler} text="Members list" />
             <Divider />
+            {isOwner && (
+              <>
+                <MenuOption onSelect={settingsSelectHandler} text="Settings" />
+                <Divider />
+              </>
+            )}
             <MenuOption onSelect={shareSelectHandler} text="Share" />
             <Divider />
-            <MenuOption
-              onSelect={addNewMemberSelectHandler}
-              text="Add new member"
-            />
-            <Divider />
+            {(isAllowedInvitations || isOwner) && (
+              <>
+                <MenuOption
+                  onSelect={addNewMemberSelectHandler}
+                  text="Add new member"
+                />
+                <Divider />
+              </>
+            )}
             <MenuOption onSelect={statsSelectHandler} text="Stats" />
             <Divider />
             <MenuOption
@@ -346,6 +404,21 @@ function TrainingGroupDetails({ route }) {
                 <Text style={styles.dialogOption}>Cancel</Text>
               </Pressable>
             </Dialog.Actions>
+          </Dialog>
+          <Dialog
+            isVisible={isVisible}
+            onBackdropPress={() => setIsVisible((prev) => !prev)}
+            overlayStyle={styles.dialogContainer}
+          >
+            <Dialog.Title
+              title="Warning"
+              titleStyle={[styles.dialogTitle, { textAlign: "center" }]}
+            />
+            <Text style={[styles.dialogText, { textAlign: "center" }]}>
+              {" "}
+              You can't quit this training group because you are an owner.
+              Before you quit you neet to give someone else leadership.
+            </Text>
           </Dialog>
         </>
       )}

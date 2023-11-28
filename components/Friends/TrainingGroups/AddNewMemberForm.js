@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import {
   View,
   StyleSheet,
@@ -6,6 +6,7 @@ import {
   TextInput,
   Pressable,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FontAwesome } from "@expo/vector-icons";
@@ -14,9 +15,20 @@ import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { FlashList } from "@shopify/flash-list";
 import { AntDesign } from "@expo/vector-icons";
-import { addDoc, arrayUnion, collection, doc, increment, updateDoc } from "firebase/firestore";
+import {
+  addDoc,
+  arrayUnion,
+  collection,
+  doc,
+  getDocs,
+  increment,
+  query,
+  updateDoc,
+  where,
+} from "firebase/firestore";
 import { db } from "../../../firebaseConfig";
 import { UserContext } from "../../../store/user-context";
+import AddNewMemberFormItem from "./AddNewMemberFormItem";
 
 function AddNewMemberForm({ route }) {
   const insets = useSafeAreaInsets();
@@ -28,19 +40,37 @@ function AddNewMemberForm({ route }) {
 
   const userCtx = useContext(UserContext);
 
-  const [results, setResults] = useState([
-    {
-      id: "IdpXV5g6c5743EiJS2zD",
-      name: "mankowskae",
-      photoUrl: "url",
-    },
-    {
-      id: 125,
-      name: "bobo1",
-      photoUrl: "url",
-    },
-  ]);
+  const [results, setResults] = useState([]);
   const [search, setSearch] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+
+  useEffect(()=>{
+    const delay = setTimeout(()=>{
+      submitSearchHandler();
+    },1000)
+    return ()=>clearTimeout(delay);
+  },[search])
+
+  async function fetchResults() {
+    try {
+      setIsLoading(true);
+      const data = await getDocs(
+        query(collection(db, "users"), where("name", "==", search))
+      );
+      let readyResults = [];
+      data.forEach((dat) =>
+        readyResults.push({ id: dat.id, name: dat.data().name })
+      );
+      console.log(readyResults);
+      setResults([]);
+      setResults([...readyResults]);
+      setIsLoading(false);
+    } catch (e) {
+      console.log(e);
+      Alert.alert("Error", "There was an error!");
+    }
+  }
 
   function goBackHandler() {
     navigation.goBack();
@@ -49,34 +79,23 @@ function AddNewMemberForm({ route }) {
   function searchChangeHandler(givenSearch) {
     setSearch(givenSearch);
   }
-  function submitSearchHandler() {}
+  function submitSearchHandler() {
+    fetchResults();
+  }
 
   function renderResultHandler(itemData) {
     const item = itemData.item;
-    async function addMemberHandler() {
-      try {
-        //SEND NOTIFICATION
-        await addDoc(collection(db,`users/${item.id}/notifications`),{
-          type: "groupInvitation",
-          groupId: teamId,
-          groupName: teamName,
-          userId: userCtx.id,
-          name: userCtx.name,
-          photoUrl: userCtx.photoUrl,
-          text: `${userCtx.name} send you an invitation to ${teamName} training group.`
-        })       
-      } catch (e) {
-        console.log(e);
-        Alert.alert("Error", "There was a problem. Try again later");
-      }
+    function viewProfileHandler() {
+      navigation.navigate("friend-profile", { id: item.id });
     }
     return (
-      <View style={styles.resultContainer}>
-        <Text style={styles.resultText}>{item.name}</Text>
-        <Pressable onPress={addMemberHandler}>
-          <AntDesign name="plus" size={32} color="white" />
-        </Pressable>
-      </View>
+      <AddNewMemberFormItem
+        item={item}
+        setResults={setResults}
+        teamId={teamId}
+        teamName={teamName}
+        viewProfile={viewProfileHandler}
+      />
     );
   }
 
@@ -104,12 +123,21 @@ function AddNewMemberForm({ route }) {
         </Pressable>
       </View>
       <View style={styles.searchResultsContainer}>
-        <FlashList
-          data={results}
-          renderItem={renderResultHandler}
-          keyExtractor={(item) => item.id}
-          estimatedItemSize={40}
-        />
+        {!isLoading ? (
+          <FlashList
+            extraData={results}
+            data={results}
+            renderItem={renderResultHandler}
+            keyExtractor={(item) => item.id}
+            estimatedItemSize={40}
+          />
+        ) : (
+          <ActivityIndicator
+            size="large"
+            color={Colors.accent500}
+            style={{ marginTop: 40 }}
+          />
+        )}
       </View>
     </View>
   );

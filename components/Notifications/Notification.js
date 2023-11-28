@@ -18,9 +18,6 @@ import { db, storage } from "../../firebaseConfig";
 import { UserContext } from "../../store/user-context";
 import { useEffect } from "react";
 import { getDownloadURL, ref } from "firebase/storage";
-import { ListItem } from "@rneui/themed";
-import { MaterialIcons } from "@expo/vector-icons";
-import Swipeable from "react-native-swipeable";
 
 function Notification({
   type,
@@ -131,6 +128,13 @@ function Notification({
   async function acceptHandler() {
     try {
       if (type === "groupInvitation") {
+        const data = await getDoc(doc(db, `users/${userCtx.id}`));
+        if (data.data().trainingGroups.filter((group) => group.id===groupId).length > 0) {
+          deleteDoc(doc(db, `users/${userCtx.id}/notifications/${id}`));
+          setIsVisible(false);
+          return;
+        }
+        //ZROBIC DODWAANIE DO ADD NEW MEMBER FORM ZEBY FETCHOWALO OSOBY
         await runTransaction(db, async (transaction) => {
           const data = await transaction.get(
             doc(db, `trainingGroups/${groupId}`)
@@ -141,13 +145,23 @@ function Notification({
             doc(db, `users/${userCtx.id}`)
           );
           const prevUserData = userData.data();
+          let readyPermissions;
+          if (preData.settings.isAllowedMembersInvitations) {
+            readyPermissions = [
+              ...prevUserData.permissions,
+              { id: groupId, type: "invitations" },
+            ];
+          } else {
+            readyPermissions = prevUserData.permissions;
+          }
+          //WEJSC DO TEAMU Z DRUGEIGO KONTA I ZOBACZĆ CZY DODAŁO PERMISSIONS
           transaction.update(doc(db, `trainingGroups/${groupId}`), {
             members: [
               ...preData.members,
               {
                 id: userCtx.id,
-                name: name,
-                photoUrl: photoUrl,
+                name: userCtx.name,
+                isOwner: false,
               },
             ],
             membersNum: preData.membersNum + 1,
@@ -158,11 +172,9 @@ function Notification({
               {
                 id: groupId,
                 name: groupName,
-                membersNum: preData.membersNum + 1,
-                rank: 1,
-                photoUrl: groupPhotoUrl,
               },
             ],
+            permissions: readyPermissions,
           });
           transaction.delete(
             doc(db, `users/${userCtx.id}/notifications/${id}`)
@@ -173,15 +185,15 @@ function Notification({
         await runTransaction(db, async (transaction) => {
           const data = await transaction.get(doc(db, `users/${userCtx.id}`));
           const data1 = await transaction.get(doc(db, `users/${userId}`));
-          
+
           let czy = false;
-          data1.data().friends.forEach((friend)=>{
-            if(friend.id === userCtx.id){
+          data1.data().friends.forEach((friend) => {
+            if (friend.id === userCtx.id) {
               console.log("TEST");
-              czy=true;
+              czy = true;
             }
-          })
-          if(czy)return;
+          });
+          if (czy) return;
           transaction.update(doc(db, `users/${userCtx.id}`), {
             friends: [
               ...data.data().friends,
@@ -219,7 +231,7 @@ function Notification({
 
   async function denyHandler() {
     try {
-      await deleteDoc(doc(db, `users/${userId}/notifications/${id}`));
+      await deleteDoc(doc(db, `users/${userCtx.id}/notifications/${id}`));
     } catch (e) {
       console.log(e);
     }

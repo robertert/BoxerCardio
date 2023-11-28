@@ -76,7 +76,7 @@ function NotificationScreen() {
       const data = await getDocs(
         query(
           collection(db, `users/${userCtx.id}/notifications`),
-          orderBy("createTime"),
+          orderBy("createTime","desc"),
           limit(10)
         )
       );

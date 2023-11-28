@@ -18,6 +18,7 @@ import EditProfile from "../components/Profile/EditProfile";
 import ResetPasswordScreen from "../screens/ResetPasswordScreen";
 import FriendProfileScreen from "../screens/FriendProfileScreen";
 import Settings from "../components/MainScreen/Settings";
+import MemberList from "../components/Friends/TrainingGroups/MemberList";
 
 const Stack = createNativeStackNavigator();
 
@@ -30,6 +31,7 @@ function MainStack() {
       <Stack.Screen name="training-groups" component={TrainingGroups}/>
       <Stack.Screen name="training-group-form" component={TrainingGroupForm}/>
       <Stack.Screen name="add-new-member-form" component={AddNewMemberForm}/>
+      <Stack.Screen name="member-list" component={MemberList}/>
       <Stack.Screen name="training-groups-details" component={TrainingGroupDetails}/>
       <Stack.Screen name="training-group-settings" component={TrainingGroupSettings}/>
       <Stack.Screen name="training-group-stats" component={TrainingGroupStats}/>

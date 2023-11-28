@@ -6,7 +6,7 @@ import { db } from "../firebaseConfig";
 
 
 
-export async function authenticate(mode, email, password, authCtx, userCtx, name) {
+export async function authenticate(mode, email, password, authCtx, userCtx, name,settingsCtx) {
   if (mode === "signIn") {
     return await signIn(email, password,authCtx,userCtx, name);
   } else {
@@ -32,12 +32,20 @@ async function signIn(email, password,authCtx,userCtx, name) {
       trainingGroups: [],
       achivements: [],
       postsPreview: [],
+      permissions: [],
+      settings: {
+        language: "en",
+        allowNotifications: true,
+        
+      },
       lastLogin: new Date(),
       createdAt: new Date(),
     });
 
 
     userCtx.getUser(name,photoUrl,newUser.id);
+    settingsCtx.getSettings("en",true);
+    settingsCtx.getPermissions([]);
 
     return response.user.stsTokenManager.accessToken;
   } catch (error) {
@@ -50,7 +58,7 @@ async function signIn(email, password,authCtx,userCtx, name) {
     console.log(error.code);    
   }
 }
-async function logIn(email,password,authCtx ,userCtx) {
+async function logIn(email,password,authCtx ,userCtx,settingsCtx) {
   
     try {
         const response = await signInWithEmailAndPassword(auth,email,password);
@@ -59,7 +67,8 @@ async function logIn(email,password,authCtx ,userCtx) {
         const readyUser = {id: user.docs[0].id, ...user.docs[0].data()};
         userCtx.getUser(readyUser.name,readyUser.photoUrl,readyUser.id);
         await updateDoc(doc(db,`users/${readyUser.id}`),{lastLogin: new Date()})
-
+        settingsCtx.getSettings(readyUser.settings.language,readyUser.settings.allowNotifications);
+        settingsCtx.getPermissions(readyUser.permissions);
         return response._tokenResponse.idToken;
     } catch (e) {
         if(e.code === 'auth/wrong-password'){

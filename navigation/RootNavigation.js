@@ -11,10 +11,12 @@ import { View } from "react-native";
 import MainStack from "./MainStack";
 import { UserContext } from "../store/user-context";
 import { collection, getDoc, getDocs, query, where } from "firebase/firestore";
+import { SettingsContext } from "../store/settings-context";
 
 function RootNavigation() {
   const authCtx = useContext(AuthContext);
   const userCtx = useContext(UserContext);
+  const settingsCtx = useContext(SettingsContext);
 
 
 
@@ -26,6 +28,7 @@ function RootNavigation() {
         );
         const gotUser = { id: userDb.docs[0].id, ...userDb.docs[0].data() };
         userCtx.getUser(gotUser.name, gotUser.photoUrl, gotUser.id);
+        settingsCtx.getPermissions(gotUser.permissions);
       }
       if (user) {
         authCtx.authenticate(user.stsTokenManager.accessToken);
