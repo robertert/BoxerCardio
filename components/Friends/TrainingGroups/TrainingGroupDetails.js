@@ -165,9 +165,9 @@ function TrainingGroupDetails({ route }) {
     await runTransaction(db, async (transaction) => {
       const data = await transaction.get(doc(db, `users/${userCtx.id}`));
       const prevData = data.data();
-      const readyTrainingGroups = prevData.trainingGroups.filter((group) => {
-        group.id !== id;
-      });
+      const readyTrainingGroups = prevData.trainingGroups.filter(
+        (group) => group.id !== id
+      );
       const readyPermissions = prevData.permissions.filter(
         (perm) => perm.id !== id && perm.type !== "invitations"
       );
@@ -177,18 +177,17 @@ function TrainingGroupDetails({ route }) {
         (memb) => memb.id !== userCtx.id
       );
 
-      if (
-        prevData.permissions.filter(
-          (perm) => perm.id === id && perm.type === "owner"
-        ).length > 0
-      ) {
-        setIsVisible(true);
-        return;
-      }
-      
       if (readyMembers.length === 0) {
         transaction.delete(doc(db, `trainingGroups/${id}`));
       } else {
+        if (
+          prevData.permissions.filter(
+            (perm) => perm.id === id && perm.type === "owner"
+          ).length > 0
+        ) {
+          setIsVisible(true);
+          return;
+        }
         transaction.update(doc(db, `trainingGroups/${id}`), {
           membersNum: prevGroupData.membersNum - 1,
           members: readyMembers,
@@ -200,8 +199,7 @@ function TrainingGroupDetails({ route }) {
         trainingGroups: readyTrainingGroups,
         permissions: readyPermissions,
       });
-      
-      // DOKONCZYĆ USUWANIE
+      navigation.goBack();
     });
   }
 

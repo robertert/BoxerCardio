@@ -45,7 +45,6 @@ function TrainingGroupSettings({ route }) {
     setIsAllowed(sett.isAllowedMembersInvitations);
     setSettings(sett);
   }, []);
-  //SPRAWDZIC CZY DZIALA FUNCKJA SAVE SETTINGS HANDLER
   async function saveSettingsHandler() {
     setIsLoading(true);
     try {

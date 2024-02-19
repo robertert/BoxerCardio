@@ -134,7 +134,6 @@ function Notification({
           setIsVisible(false);
           return;
         }
-        //ZROBIC DODWAANIE DO ADD NEW MEMBER FORM ZEBY FETCHOWALO OSOBY
         await runTransaction(db, async (transaction) => {
           const data = await transaction.get(
             doc(db, `trainingGroups/${groupId}`)

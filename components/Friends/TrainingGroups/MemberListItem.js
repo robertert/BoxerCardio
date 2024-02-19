@@ -20,11 +20,11 @@ import { doc, runTransaction } from "firebase/firestore";
 function MemberListItem({ item, isOwn, viewProfile, teamId }) {
   const [image, setImage] = useState();
   const [isOwner, setIsOwner] = useState(isOwn);
+  const [isLoading, setIsLoading] = useState(false);
 
   const userCtx = useContext(UserContext);
 
   useEffect(() => {
-    console.log(item);
     async function fetchPhoto() {
       try {
         const url = await getDownloadURL(
@@ -92,6 +92,39 @@ function MemberListItem({ item, isOwn, viewProfile, teamId }) {
     });
   }
 
+  async function removeMemberHandler() {
+    setIsLoading(true);
+    try {
+      await runTransaction(db, async (transaction) => {
+        const teamData = await transaction.get(
+          doc(db, `trainingGroups/${teamId}`)
+        );
+        const userData = await transaction.get(doc(db, `users/${item.id}`));
+        const readyMembers = teamData
+          .data()
+          .members.filter((mem) => mem.id !== item.id);
+        const readyPermissions = userData
+          .data()
+          .permissions.filter(
+            (perm) => perm.id !== teamId || perm.type !== "invitations"
+          );
+        const readyTeams = userData
+          .data()
+          .trainingGroups.filter((group) => group.id !== teamId);
+        transaction.update(doc(db, `users/${item.id}`), {
+          permissions: readyPermissions,
+          trainingGroups: readyTeams,
+        });
+        transaction.update(doc(db, `trainingGroups/${teamId}`), {
+          membersNum: teamData.data().membersNum - 1,
+          members: readyMembers,
+        });
+      });
+    } catch (e) {
+      console.log(e);
+    }
+  }
+
   function viewProfileHandler() {
     viewProfile();
   }
@@ -137,7 +170,7 @@ function MemberListItem({ item, isOwn, viewProfile, teamId }) {
                 customStyles={{
                   optionText: styles.infoTextRed,
                 }}
-                onSelect={() => alert(`Removed friends`)}
+                onSelect={removeMemberHandler}
                 text="Remove from the team"
               />
             </>

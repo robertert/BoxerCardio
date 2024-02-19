@@ -20,6 +20,7 @@ import {
   arrayUnion,
   collection,
   doc,
+  getDoc,
   getDocs,
   increment,
   query,
@@ -44,13 +45,12 @@ function AddNewMemberForm({ route }) {
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-
-  useEffect(()=>{
-    const delay = setTimeout(()=>{
+  useEffect(() => {
+    const delay = setTimeout(() => {
       submitSearchHandler();
-    },1000)
-    return ()=>clearTimeout(delay);
-  },[search])
+    }, 1000);
+    return () => clearTimeout(delay);
+  }, [search]);
 
   async function fetchResults() {
     try {
@@ -59,9 +59,15 @@ function AddNewMemberForm({ route }) {
         query(collection(db, "users"), where("name", "==", search))
       );
       let readyResults = [];
-      data.forEach((dat) =>
-        readyResults.push({ id: dat.id, name: dat.data().name })
-      );
+
+      const dataMem = await getDoc(doc(db, `trainingGroups/${teamId}`));
+      const members = dataMem.data().members;
+
+      data.forEach((dat) => {
+        if (members.filter((mem) => mem.id === dat.id).length === 0) {
+          readyResults.push({ id: dat.id, name: dat.data().name });
+        }
+      });
       console.log(readyResults);
       setResults([]);
       setResults([...readyResults]);
