@@ -14,12 +14,13 @@ import {
   orderBy,
   query,
 } from "firebase/firestore";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Share from "../components/MainScreen/Share";
 import GestureRecognizer from "react-native-swipe-gestures";
-const LIMIT = 10;
-let last;
-function MainScreen({ navigation }) {
+import { useTranslation } from "react-i18next";
+import { useFocusEffect } from "@react-navigation/native";
+
+function MainScreen({ navigation,route }) {
   //  przy ponownym nacisnieciu scroll to the top //////////////////////////////////////////
   const ref = useRef();
   useEffect(() => {
@@ -43,11 +44,10 @@ function MainScreen({ navigation }) {
   const [isFirstLoading, setIsFirstLoading] = useState(true);
   const [hasNextPage, setHasNextPage] = useState(false);
 
+  const {t} = useTranslation();
+
   ////// ALL HANDLERS ////////////////////////////////////////////////////////////////////
 
-  async function handler() {
-    await auth.signOut();
-  }
 
   function shareHandler() {
     setFooter(true);
@@ -82,13 +82,14 @@ function MainScreen({ navigation }) {
   }, []);
 
   async function initialFetchPosts() {
+    setLastDoc({});
     setIsFirstLoading(true);
     try {
       const posts = await getDocs(
         query(
           collection(db, "posts"),
           orderBy("userName"),
-          limit(10) //   ZMIENIĆ POŹNIEJ NA DOBRZE i setERRROT TEŻ  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+          limit(10)
         )
       );
       const lastD = posts.docs[posts.docs.length - 1];
@@ -109,7 +110,7 @@ function MainScreen({ navigation }) {
       setPosts([...readyPosts]);
     } catch (e) {
       console.log(e);
-      setIsErrorRender(false); //////// ZMIENIĆ POŹŃEJ
+      setIsErrorRender(true); 
     }
   }
 
@@ -122,7 +123,7 @@ function MainScreen({ navigation }) {
             collection(db, "posts"),
             orderBy("userName"),
             startAfter(lastDoc),
-            limit(10) //   ZMIENIĆ POŹNIEJ NA DOBRZE i setERRROT TEŻ  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            limit(10) 
           )
         );
         const lastD = posts.docs[posts.docs.length - 1];
@@ -142,10 +143,15 @@ function MainScreen({ navigation }) {
         setPosts((prev) => [...prev, ...readyPosts]);
       } catch (error) {
         console.log(error);
-        setIsErrorRender(false); //////// ZMIENIĆ POŹŃEJ
+        setIsErrorRender(true);
       }
     }
   }
+
+
+  useFocusEffect(useCallback(()=>{
+    initialFetchPosts();
+  },[]))
 
   ///////////////////////////////////////////////////////////////////////////////////////
 
@@ -169,6 +175,7 @@ function MainScreen({ navigation }) {
               setRefresh(true);
               setPosts([]);
               loadNextPage();
+              //initialFetchPosts();
               setRefresh(false);
             } catch (e) {
               console.log(e);
@@ -177,7 +184,7 @@ function MainScreen({ navigation }) {
           }}
           ListEmptyComponent={
             <Text style={styles.errorText}>
-              You don't have any posts to see yet.
+              {t("You don't have any posts to see yet.")}
             </Text>
           }
           ListFooterComponent={
@@ -190,9 +197,9 @@ function MainScreen({ navigation }) {
                 />
               ) : (
                 <View style={styles.footerContainer}>
-                  <Text style={styles.footerTextTitle}>That's all</Text>
+                  <Text style={styles.footerTextTitle}>{t("That's all")}</Text>
                   <Text style={styles.footerText}>
-                    You've seen all the posts from last 3 days.
+                    {t("You've seen all the posts from last 3 days.")}
                   </Text>
                 </View>
               )
@@ -200,8 +207,7 @@ function MainScreen({ navigation }) {
               <View style={styles.footerContainer}>
                 <Text style={styles.footerTextTitle}>Error</Text>
                 <Text style={styles.footerText}>
-                  There was an error while loading. Please check your internet
-                  conection or try again later.
+                  {t("Error message")}
                 </Text>
               </View>
             )

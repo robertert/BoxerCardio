@@ -17,72 +17,8 @@ import { collection, getDoc, doc, getDocs } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
 import { SectionList } from "react-native";
 import { UserContext } from "../../store/user-context";
+import { useTranslation } from "react-i18next";
 
-const DUMMY_ACHIVEMENT = {
-  id: 1,
-  name: "Ultra boxer",
-  photoUrl: "url",
-  description: "1000 punches in 1 week ",
-};
-
-const DUMMY_ACHIVEMENTS = [
-  [
-    {
-      id: 1,
-      selected: false,
-    },
-    {
-      id: 2,
-      selected: false,
-    },
-    {
-      id: 3,
-      selected: false,
-    },
-  ],
-  [
-    {
-      id: 4,
-      selected: false,
-    },
-    {
-      id: 5,
-      selected: false,
-    },
-    {
-      id: 6,
-      selected: false,
-    },
-  ],
-  [
-    {
-      id: 7,
-      selected: false,
-    },
-    {
-      id: 8,
-      selected: false,
-    },
-    {
-      id: 9,
-      selected: false,
-    },
-  ],
-  [
-    {
-      id: 10,
-      selected: false,
-    },
-    {
-      id: 11,
-      selected: false,
-    },
-    {
-      id: 12,
-      selected: false,
-    },
-  ],
-];
 
 function AchivementsDisplayDetails() {
   const insets = useSafeAreaInsets();
@@ -96,6 +32,8 @@ function AchivementsDisplayDetails() {
 
   const navigation = useNavigation();
   const userCtx = useContext(UserContext);
+
+  const {t} = useTranslation();
 
   useEffect(() => {
     fetchAchivements();
@@ -154,8 +92,8 @@ function AchivementsDisplayDetails() {
       }
 
       setAllAchivements([
-        { header: "Unlocked achivements", data: readyAchivements },
-        { header: "Locked achivements", data: readyLocked },
+        { header: t("Unlocked achivements"), data: readyAchivements },
+        { header: t("Locked achivements"), data: readyLocked },
       ]);
       setIsLoading(false);
     } catch (e) {
@@ -259,8 +197,7 @@ function AchivementsDisplayDetails() {
                 <View style={styles.footerContainer}>
                   <Text style={styles.footerTextTitle}>Error</Text>
                   <Text style={styles.footerText}>
-                    There was an error while loading. Please check your internet
-                    conection or try again later.
+                    {t("Error message")}
                   </Text>
                 </View>
               )
@@ -281,7 +218,7 @@ function AchivementsDisplayDetails() {
         >
           <View style={styles.infoInner}>
             <View style={styles.topInfo}>
-              <Text style={styles.infoTitle}>{infoAchivement.name}</Text>
+              <Text style={styles.infoTitle}>{t(infoAchivement.name)}</Text>
               <Image
                 style={styles.img}
                 source={require("../../assets/icon.png")}
@@ -289,7 +226,7 @@ function AchivementsDisplayDetails() {
             </View>
 
             <Text style={styles.infoDescription}>
-              {infoAchivement.description}
+              {t(infoAchivement.description)}
             </Text>
           </View>
         </Overlay>
@@ -364,6 +301,7 @@ const styles = StyleSheet.create({
     color: Colors.primary100,
     fontWeight: "bold",
     fontSize: 25,
+    marginBottom:60,
   },
   loading: {
     marginTop: 30,

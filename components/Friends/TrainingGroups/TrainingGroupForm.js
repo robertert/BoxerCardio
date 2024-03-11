@@ -32,6 +32,7 @@ import {
 } from "expo-image-picker";
 import { Overlay } from "@rneui/themed";
 import Divider from "../../UI/Divider";
+import { useTranslation } from "react-i18next";
 
 function TrainingGroupForm() {
   const insets = useSafeAreaInsets();
@@ -58,6 +59,8 @@ function TrainingGroupForm() {
 
   const [isDialogVisible, setIsDialogVisible] = useState(false);
 
+  const { t } = useTranslation();
+
   function toggleIsVisible() {
     setIsDialogVisible((prev) => !prev);
   }
@@ -72,7 +75,7 @@ function TrainingGroupForm() {
       return permissionResponse.granted;
     }
     if (cameraPermissionInformation.status === PermissionStatus.DENIED) {
-      Alert.alert("Error", "Permission not granted");
+      Alert.alert("Error", t("Permission not granted"));
       return false;
     }
     return true;
@@ -131,7 +134,6 @@ function TrainingGroupForm() {
       const batch = writeBatch(db);
 
       batch.set(doc(db, `trainingGroups/${uid}`), {
-        banerUrl: "url",
         createdAt: new Date(),
         members: members,
         membersNum: 1,
@@ -143,23 +145,23 @@ function TrainingGroupForm() {
         tag: tag,
       });
       batch.update(doc(db, `users/${userCtx.id}`), {
-        permissions: arrayUnion({ id: uid, type: "owner" }),
+        permissions: arrayUnion({ id: uid, type: "owner" },{ id: uid, type: "invitations" }),
         trainingGroups: arrayUnion({
           id: uid,
           name: name,
+          tag: tag,
         }),
       });
       await batch.commit();
       navigation.goBack();
     } catch (e) {
       console.log(e);
-      Alert.alert("Error", "There was an error. Try again later");
+      Alert.alert("Error", t("Error message"));
     }
   }
 
   function renderMemberHandler(itemData) {
     const item = itemData.item;
-    console.log(item);
     return (
       <View style={styles.memberContainer}>
         <Image
@@ -183,14 +185,11 @@ function TrainingGroupForm() {
           <Pressable onPress={goBackHandler}>
             <Ionicons name="chevron-back" size={42} color="white" />
           </Pressable>
-          <Pressable onPress={settingsHandler}>
-            <Ionicons name="md-settings-sharp" size={35} color="white" />
-          </Pressable>
         </View>
         <Pressable onPress={toggleIsVisible}>
           <View style={styles.imageContainer}>
             <Image source={{ uri: image }} style={styles.img} />
-            <Text style={styles.infoPhoto}>Press to change photo</Text>
+            <Text style={styles.infoPhoto}>{t("Press to change photo")}</Text>
           </View>
         </Pressable>
         <View style={styles.inputContainer}>
@@ -207,7 +206,7 @@ function TrainingGroupForm() {
             </View>
           </View>
           <View style={styles.nameContainer}>
-            <Text style={styles.text}>Name</Text>
+            <Text style={styles.text}>{t("Name")}</Text>
             <View style={styles.nameInputContainer}>
               <TextInput
                 style={styles.input}
@@ -227,7 +226,7 @@ function TrainingGroupForm() {
         </View>
         <Pressable onPress={submitHandler}>
           <View style={styles.submitButton}>
-            <Text style={styles.submitText}>Submit</Text>
+            <Text style={styles.submitText}>{t("Submit")}</Text>
           </View>
         </Pressable>
       </View>
@@ -240,14 +239,14 @@ function TrainingGroupForm() {
           <Pressable onPress={imagePressHandler.bind(this, "library")}>
             <View style={styles.optionContainer}>
               <MaterialIcons name="photo-library" size={24} color="white" />
-              <Text style={styles.dialogOption}>Chose photo from library</Text>
+              <Text style={styles.dialogOption}>{t("Choose photo from library")}</Text>
             </View>
           </Pressable>
           <Divider />
           <Pressable onPress={imagePressHandler.bind(this, "camera")}>
             <View style={styles.optionContainer}>
               <MaterialIcons name="photo-camera" size={24} color="white" />
-              <Text style={styles.dialogOption}>Take new photo</Text>
+              <Text style={styles.dialogOption}>{t("Take new photo")}</Text>
             </View>
           </Pressable>
         </View>
@@ -306,7 +305,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     width: "45%",
     justifyContent: "center",
-    alignItems: "center",
+    alignItems: "center"
   },
   nameInputContainer: {
     marginVertical: 10,
@@ -329,7 +328,9 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   inputTag: {
-    marginHorizontal: 21,
+    textAlign: "center",
+    width: "80%",
+    marginHorizontal: 8,
     fontWeight: "bold",
     fontSize: 28,
   },

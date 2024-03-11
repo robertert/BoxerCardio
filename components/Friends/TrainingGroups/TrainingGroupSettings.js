@@ -6,6 +6,7 @@ import {
   Pressable,
   ActivityIndicator,
   Switch,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "../../../constants/colors";
@@ -24,6 +25,7 @@ import { db } from "../../../firebaseConfig";
 import { useContext } from "react";
 import { UserContext } from "../../../store/user-context";
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 
 function TrainingGroupSettings({ route }) {
   const sett = route.params.settings;
@@ -34,6 +36,8 @@ function TrainingGroupSettings({ route }) {
   const navigation = useNavigation();
 
   const userCtx = useContext(UserContext);
+
+  const { t } = useTranslation();
 
   const [isLoading, setIsLoading] = useState(false);
   const [settings, setSettings] = useState({
@@ -50,8 +54,9 @@ function TrainingGroupSettings({ route }) {
     try {
       const data = await getDoc(doc(db, `trainingGroups/${id}`));
       const members = data.data().members;
-      for (const member of members) {
-        await runTransaction(db, async (transaction) => {
+      await runTransaction(db, async (transaction) => {
+        let pendingWrites = [];
+        for (const member of members) {
           const docRef = doc(db, `users/${member.id}`);
           const user = await transaction.get(docRef);
           let userSettings = user.data().permissions;
@@ -61,26 +66,31 @@ function TrainingGroupSettings({ route }) {
               (perm) => perm.id === id && perm.type === "invitations"
             ).length === 0
           ) {
-            userSettings = [
-              ...userSettings,
-              { id: id, type: "invitations" },
-            ];
+            userSettings = [...userSettings, { id: id, type: "invitations" }];
           } else if (!settings.isAllowedMembersInvitations) {
             userSettings = userSettings.filter(
               (permission) =>
                 permission.id !== id || permission.type !== "invitations"
             );
           }
-          transaction.update(docRef, { permissions: userSettings });
-        });
-      }
 
-      await updateDoc(doc(db, `trainingGroups/${id}`), {
-        settings: settings,
+          pendingWrites.push((t) =>
+            t.update(docRef, { permissions: userSettings })
+          );
+        }
+        for(write of pendingWrites){
+          write(transaction);
+        }
+        transaction.update(doc(db, `trainingGroups/${id}`), {
+          settings: settings,
+        });
       });
+
+      
       setIsLoading(false);
       navigation.goBack();
     } catch (e) {
+      Alert.alert("Error", t("Error message"));
       console.log(e);
     }
   }
@@ -111,7 +121,7 @@ function TrainingGroupSettings({ route }) {
         <>
           <View style={styles.settingRow}>
             <Text style={styles.text}>
-              Allow group members to invite new members
+              {t("Allow group members to invite new members")}
             </Text>
             <Switch
               trackColor={{
@@ -126,7 +136,7 @@ function TrainingGroupSettings({ route }) {
           </View>
           <Pressable onPress={saveSettingsHandler}>
             <View style={styles.buttonContainer}>
-              <Text style={styles.buttonText}>Save</Text>
+              <Text style={styles.buttonText}>{t("Save")}</Text>
             </View>
           </Pressable>
         </>

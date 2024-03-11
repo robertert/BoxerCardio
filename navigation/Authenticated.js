@@ -1,6 +1,6 @@
 import MainScreen from "../screens/MainScreen";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons,Entypo } from "@expo/vector-icons";
 import Colors from "../constants/colors";
 import { View, StyleSheet } from "react-native";
 import FriendsScreen from "../screens/FriendsScreen";
@@ -60,7 +60,7 @@ function Authenticated() {
                 },
               ]}
             >
-              <Ionicons name={"ios-home"} size={38} color={color} />
+              <Entypo name="home" size={38} color={color} />
             </View>
           ),
         }}

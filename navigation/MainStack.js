@@ -19,11 +19,14 @@ import ResetPasswordScreen from "../screens/ResetPasswordScreen";
 import FriendProfileScreen from "../screens/FriendProfileScreen";
 import Settings from "../components/MainScreen/Settings";
 import MemberList from "../components/Friends/TrainingGroups/MemberList";
+import AchivementModal from "../components/UI/AchievementModal";
+import { View } from "react-native";
 
 const Stack = createNativeStackNavigator();
 
 function MainStack() {
   return (
+    <View style={{flex: 1,justifyContent: "flex-end"}}>
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="mainPage" component={Authenticated} />
       <Stack.Screen name="reset-password" component={ResetPasswordScreen}/>
@@ -44,7 +47,12 @@ function MainStack() {
       <Stack.Screen name="edit-profile" component={EditProfile}/>
       <Stack.Screen name="friend-profile" component={FriendProfileScreen}/>
       <Stack.Screen name="settings" component={Settings}/>
+      <Stack.Group screenOptions={{ presentation: 'modal' }}>
+        <Stack.Screen name="achivement" component={AchivementModal}/>
+      </Stack.Group>
     </Stack.Navigator>
+    <AchivementModal/>
+    </View>
   );
 }
 

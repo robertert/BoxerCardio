@@ -1,5 +1,12 @@
-import { View, StyleSheet, Pressable, Text, Dimensions } from "react-native";
-import Colors from "../../constants/colors";
+import {
+  View,
+  StyleSheet,
+  Pressable,
+  Text,
+  Dimensions,
+  Alert,
+} from "react-native";
+import Colors, { timeModes } from "../../constants/colors";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -16,6 +23,7 @@ import { LineChart } from "react-native-chart-kit";
 import { db } from "../../firebaseConfig";
 import { doc, getDoc } from "firebase/firestore";
 import { ActivityIndicator } from "react-native";
+import { useTranslation } from "react-i18next";
 
 const DUMMY_MONTHS = [
   "January",
@@ -31,6 +39,20 @@ const DUMMY_MONTHS = [
   "November",
   "December",
 ];
+const DUMMY_MONTHS_SHORT = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 const DUMMY_WEEKDAYS = [
   "Mon.",
   "Tues.",
@@ -42,18 +64,21 @@ const DUMMY_WEEKDAYS = [
 ];
 
 function ChartDisplayDetails({ route }) {
-  const [mode, setMode] = useState("100 P");
+  const [mode, setMode] = useState("100P");
   const [scoreType, setScoreType] = useState("Highest");
-  const [timeRange, setTimeRange] = useState("Last 30 days");
+  const [timeRange, setTimeRange] = useState("30 days");
   const [labels, setLabels] = useState([]);
   const [chartData, setChartData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [ySuffix, setYSuffix] = useState("");
 
   const insets = useSafeAreaInsets();
 
   const navigation = useNavigation();
 
   const id = route.params.id;
+
+  const { t } = useTranslation();
 
   const date = new Date();
 
@@ -69,11 +94,11 @@ function ChartDisplayDetails({ route }) {
           } else {
             add = 0;
           }
-          return [...prev, DUMMY_MONTHS[month - i + add]];
+          return [...prev, t(DUMMY_MONTHS_SHORT[month - i + add])];
         });
       }
     }
-    if (timeRange === "Last year") {
+    if (timeRange === "This year") {
       const month = date.getMonth();
       let add;
       for (let i = 11; i >= 0; i -= 2) {
@@ -83,7 +108,7 @@ function ChartDisplayDetails({ route }) {
           } else {
             add = 0;
           }
-          return [...prev, DUMMY_MONTHS[month - i + add]];
+          return [...prev, t(DUMMY_MONTHS_SHORT[month - i + add])];
         });
       }
     }
@@ -103,11 +128,11 @@ function ChartDisplayDetails({ route }) {
           } else {
             add = 0;
           }
-          return [...prev, DUMMY_MONTHS[month - i + add]];
+          return [...prev, t(DUMMY_MONTHS[month - i + add])];
         });
       }
     }
-    if (timeRange === "Last 30 days") {
+    if (timeRange === "30 days") {
       const day = date.getDate();
       let add;
       for (let i = 30; i >= 0; i -= 6) {
@@ -121,7 +146,7 @@ function ChartDisplayDetails({ route }) {
         });
       }
     }
-    if (timeRange === "Last week") {
+    if (timeRange === "This week") {
       const day = date.getDay();
       let add;
       for (let i = 6; i >= 0; i--) {
@@ -131,13 +156,62 @@ function ChartDisplayDetails({ route }) {
           } else {
             add = 0;
           }
-          return [...prev, DUMMY_WEEKDAYS[day - i + add]];
+          return [...prev, t(DUMMY_WEEKDAYS[day - i + add])];
         });
       }
     }
   }, [timeRange]);
 
   //FETCHING DATA
+
+  function formatYAxis(score) {
+    let scr = score;
+    if (timeModes.filter((tMode) => tMode === mode).length > 0) {
+      setYSuffix("");
+      if (score > 3600) {
+        const hours = Math.floor(score / 3600);
+        let min, sec;
+        if (Math.floor((score % 3600) / 60) === 0) {
+          min = "00";
+        } else if (Math.floor((score % 3600) / 60) < 10) {
+          min = `0${Math.floor((score % 3600) / 60)}`;
+        } else {
+          min = Math.floor((score % 3600) / 60);
+        }
+        if (score % 60 === 0) {
+          sec = "00";
+        } else if (score % 60 < 10) {
+          sec = `0${score % 60}`;
+        } else {
+          sec = score % 60;
+        }
+        scr = `${hours}:${min}:${sec}`;
+      } else if (score > 60) {
+        let min, sec;
+        if (Math.floor((score % 3600) / 60) === 0) {
+          min = "00";
+        } else {
+          min = Math.floor((score % 3600) / 60);
+        }
+        if (score % 60 === 0) {
+          sec = "00";
+        } else if (score % 60 < 10) {
+          sec = `0${score % 60}`;
+        } else {
+          sec = score % 60;
+        }
+        scr = `${min}:${sec}`;
+      } else if (score > 0) {
+        scr = `00:${score}`;
+      }
+      if (score == 0) {
+        scr = "0:00";
+      }
+    } else {
+      setYSuffix("p.");
+    }
+    return scr;
+  }
 
   useEffect(() => {
     async function changeData() {
@@ -167,7 +241,7 @@ function ChartDisplayDetails({ route }) {
         setIsLoading(false);
       }
 
-      if (timeRange === "Last year") {
+      if (timeRange === "This year") {
         const month = date.getMonth();
         let add;
         let year;
@@ -227,12 +301,12 @@ function ChartDisplayDetails({ route }) {
         });
         setIsLoading(false);
       }
-      if (timeRange === "Last 30 days") {
+      if (timeRange === "30 days") {
         const day = date.getDate();
         let add;
         let month;
         let year;
-        for (let i = 30; i >= 0; i-=2) {
+        for (let i = 30; i >= 0; i -= 2) {
           const prevDate = new Date(date.getTime() - i * (24 * 3600 * 1000));
           year = prevDate.getFullYear();
           month = prevDate.getMonth() + 1;
@@ -246,13 +320,20 @@ function ChartDisplayDetails({ route }) {
         setIsLoading(true);
         await new Promise((resolve) => {
           days.forEach(async (day, index, array) => {
-            await fetchData("Day", mode, scoreType, day.year,day.month,day.day);
+            await fetchData(
+              "Day",
+              mode,
+              scoreType,
+              day.year,
+              day.month,
+              day.day
+            );
             if (index === array.length - 1) resolve();
           });
         });
         setIsLoading(false);
       }
-      if (timeRange === "Last week") {
+      if (timeRange === "This week") {
         const day = date.getDate();
         let add;
         let month;
@@ -271,7 +352,14 @@ function ChartDisplayDetails({ route }) {
         setIsLoading(true);
         await new Promise((resolve) => {
           days.forEach(async (day, index, array) => {
-            await fetchData("Day", mode, scoreType, day.year,day.month,day.day);
+            await fetchData(
+              "Day",
+              mode,
+              scoreType,
+              day.year,
+              day.month,
+              day.day
+            );
             if (index === array.length - 1) resolve();
           });
         });
@@ -288,15 +376,13 @@ function ChartDisplayDetails({ route }) {
     } else if (type === "Year") {
       path = `users/${id}/stats/${year}`;
     } else if (type === "Month") {
-      path = `users/${id}/stats/${year}.${month}`;
+      path = `users/${id}/stats/${year}:${month}`;
     } else if (type === "Day") {
-      path = `users/${id}/stats/${year}.${month}.${day}`;
+      path = `users/${id}/stats/${year}:${month}:${day}`;
     }
     try {
-      //console.log(path);
       const data = await getDoc(doc(db, path));
       const data1 = data?.data();
-
       if (data1 !== undefined) {
         if (data1.hasOwnProperty(mode)) {
           if (data1[mode].hasOwnProperty(scoreType)) {
@@ -319,6 +405,7 @@ function ChartDisplayDetails({ route }) {
         });
       }
     } catch (e) {
+      Alert.alert("Error", t("Error message"));
       console.log(e);
     }
   }
@@ -365,7 +452,7 @@ function ChartDisplayDetails({ route }) {
                 text="3 MINUTE ROUND"
               />
               <Divider />
-              <MenuOption onSelect={() => setMode("100 P")} text="100 PUNCH" />
+              <MenuOption onSelect={() => setMode("100P")} text="100 PUNCH" />
               <Divider />
               <MenuOption onSelect={() => setMode("SPEED")} text="SPEED TEST" />
               <Divider />
@@ -390,7 +477,7 @@ function ChartDisplayDetails({ route }) {
           <Menu>
             <MenuTrigger>
               <View style={styles.innerPickerContainer}>
-                <Text style={styles.pickerText}>{scoreType}</Text>
+                <Text style={styles.pickerText}>{t(scoreType)}</Text>
                 <AntDesign name="down" size={10} color="white" />
               </View>
             </MenuTrigger>
@@ -403,12 +490,12 @@ function ChartDisplayDetails({ route }) {
             >
               <MenuOption
                 onSelect={() => setScoreType("Highest")}
-                text="Highest score"
+                text={t("Highest score")}
               />
               <Divider />
               <MenuOption
                 onSelect={() => setScoreType("Avarage")}
-                text="Avarage score"
+                text={t("Avarage score")}
               />
             </MenuOptions>
           </Menu>
@@ -417,7 +504,7 @@ function ChartDisplayDetails({ route }) {
           <Menu>
             <MenuTrigger>
               <View style={styles.innerPickerContainer}>
-                <Text style={styles.pickerText}>{timeRange}</Text>
+                <Text style={styles.pickerText}>{t(timeRange)}</Text>
                 <AntDesign name="down" size={10} color="white" />
               </View>
             </MenuTrigger>
@@ -430,39 +517,39 @@ function ChartDisplayDetails({ route }) {
             >
               <MenuOption
                 onSelect={() => setTimeRange("All time")}
-                text="All time"
+                text={t("All time")}
               />
               <Divider />
               <MenuOption
-                onSelect={() => setTimeRange("Last year")}
-                text="Last year"
+                onSelect={() => setTimeRange("This year")}
+                text={t("This year")}
               />
               <Divider />
               <MenuOption
                 onSelect={() => setTimeRange("6 months")}
-                text="Last 6 months"
+                text={t("Last 6 months")}
               />
               <Divider />
               <MenuOption
                 onSelect={() => setTimeRange("3 months")}
-                text="Last 3 months"
+                text={t("Last 3 months")}
               />
               <Divider />
               <MenuOption
-                onSelect={() => setTimeRange("Last 30 days")}
-                text="Last 30 days"
+                onSelect={() => setTimeRange("30 days")}
+                text={t("Last 30 days")}
               />
               <Divider />
               <MenuOption
-                onSelect={() => setTimeRange("Last week")}
-                text="Last week"
+                onSelect={() => setTimeRange("This week")}
+                text={t("This week")}
               />
             </MenuOptions>
           </Menu>
         </View>
       </View>
       <View style={styles.chartContainer}>
-        <Text style={styles.titleText}>Your progress</Text>
+        <Text style={styles.titleText}>{t("Your progress")}</Text>
         {!isLoading ? (
           <LineChart
             data={{
@@ -476,8 +563,9 @@ function ChartDisplayDetails({ route }) {
             width={Dimensions.get("window").width - 30} // from react-native
             height={300}
             yAxisLabel=""
-            yAxisSuffix="p."
-            yAxisInterval={1} // optional, defaults to 1
+            yAxisSuffix={ySuffix}
+            yAxisInterval={1}
+            formatYLabel={formatYAxis}
             chartConfig={{
               backgroundGradientFrom: Colors.accent300,
               backgroundGradientTo: Colors.accent500,

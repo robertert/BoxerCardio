@@ -1,4 +1,4 @@
-import { View, StyleSheet, Text, Pressable } from "react-native";
+import { View, StyleSheet, Text, Pressable, Alert } from "react-native";
 import Colors from "../../constants/colors";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -11,6 +11,7 @@ import { useContext } from "react";
 import { ShelfContext } from "../../store/shelf-context";
 import { updateDoc,doc } from "firebase/firestore";
 import { UserContext } from "../../store/user-context";
+import { useTranslation } from "react-i18next";
 
 function EditShelf() {
   const insets = useSafeAreaInsets();
@@ -22,6 +23,8 @@ function EditShelf() {
   const shelfContext = useContext(ShelfContext);
   const userCtx = useContext(UserContext);
 
+  const {t} = useTranslation();
+
   function goBackHandler() {
     navigation.goBack();
   }
@@ -29,11 +32,12 @@ function EditShelf() {
   async function saveHandler(){
     try {
       await updateDoc(doc(db,`users/${userCtx.id}`),{
-        achivementsCounter: shelfContext.counter,
-        achivements: shelfContext.achivements,
+        achivementsCounter: shelfContext.counter?shelfContext.counter:0,
+        achivements: shelfContext.achivements?shelfContext.achivements:[],
         chartProps: shelfContext.chartProps,
       })
     } catch (e) {
+      Alert.alert("Error",t("Error message"))
       console.log(e);
     }
     
@@ -110,7 +114,7 @@ function EditShelf() {
         </Tab.Navigator>
         <Pressable onPress={saveHandler}>
         <View style={styles.buttonContainer}>
-            <Text style={styles.buttonText}>Save</Text>
+            <Text style={styles.buttonText}>{t("Save")}</Text>
         </View>
       </Pressable>
       </View>

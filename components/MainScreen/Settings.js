@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Pressable,
   Switch,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "../../constants/colors";
@@ -19,6 +20,7 @@ import { AntDesign } from "@expo/vector-icons";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
 import { UserContext } from "../../store/user-context";
+import { useTranslation } from "react-i18next";
 
 function Settings() {
   const insets = useSafeAreaInsets();
@@ -37,6 +39,8 @@ function Settings() {
   const [formatedLanguage, setFormatedLanguage] = useState(
     form(settingsCtx.laguage)
   );
+
+  const { t, i18n } = useTranslation();
 
   function form(lang) {
     if (lang === "en") {
@@ -65,6 +69,7 @@ function Settings() {
   }
 
   async function savePressHandler() {
+    i18n.changeLanguage(language);
     settingsCtx.getSettings(language, isAllowedNotifications);
     try {
       await updateDoc(doc(db, `users/${userCtx.id}`), {
@@ -73,8 +78,9 @@ function Settings() {
           allowNotifications: isAllowedNotifications,
         },
       });
-      goBackHandler();
+      navigation.navigate("mainPage",{refresh: true})
     } catch (e) {
+      Alert.alert("Error", t("Error message"));
       console.log(e);
     }
   }
@@ -92,7 +98,7 @@ function Settings() {
         </Pressable>
       </View>
       <View style={styles.settingRow}>
-        <Text style={styles.text}>Allow notifications: </Text>
+        <Text style={styles.text}>{t("Allow notifications: ")}</Text>
         <Switch
           trackColor={{ false: Colors.primary500, true: Colors.accent500_80 }}
           thumbColor={Colors.accent500}
@@ -104,7 +110,7 @@ function Settings() {
       <Divider />
       <Pressable onPress={toggleIsVisible}>
         <View style={styles.settingRow}>
-          <Text style={styles.text}>Language: </Text>
+          <Text style={styles.text}>{t("Language: ")}</Text>
           <View style={styles.languageContainer}>
             <Text style={[styles.text, { marginRight: 7 }]}>
               {formatedLanguage}
@@ -116,7 +122,7 @@ function Settings() {
       <Divider />
       <Pressable onPress={savePressHandler}>
         <View style={styles.buttonContainer}>
-          <Text style={styles.buttonText}>Save</Text>
+          <Text style={styles.buttonText}>{t("Save")}</Text>
         </View>
       </Pressable>
       <Overlay
@@ -170,7 +176,7 @@ const styles = StyleSheet.create({
   },
   text: {
     color: Colors.primary100,
-    fontSize: 23,
+    fontSize: 21,
     fontWeight: "700",
   },
   languageContainer: {

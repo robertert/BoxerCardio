@@ -1,9 +1,9 @@
 import { View, Pressable, Text, StyleSheet, ScrollView } from "react-native";
 import Colors from "../../constants/colors";
 import { FontAwesome5 } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { FlashList } from "@shopify/flash-list";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Overlay } from "@rneui/base";
 import { Image } from "react-native";
 import { doc, getDoc } from "firebase/firestore";
@@ -11,72 +11,8 @@ import { db } from "../../firebaseConfig";
 import { useContext } from "react";
 import { UserContext } from "../../store/user-context";
 import { ActivityIndicator } from "react-native";
+import { useTranslation } from "react-i18next";
 
-const DUMMY_ACHIVEMENT = {
-  id: 1,
-  name: "Ultra boxer",
-  photoUrl: "url",
-  description: "1000 punches in 1 week ",
-};
-
-const DUMMY_ACHIVEMENTS = [
-  [
-    {
-      id: 1,
-      selected: false,
-    },
-    {
-      id: 2,
-      selected: false,
-    },
-    {
-      id: 3,
-      selected: false,
-    },
-  ],
-  [
-    {
-      id: 4,
-      selected: false,
-    },
-    {
-      id: 5,
-      selected: false,
-    },
-    {
-      id: 6,
-      selected: false,
-    },
-  ],
-  [
-    {
-      id: 7,
-      selected: false,
-    },
-    {
-      id: 8,
-      selected: false,
-    },
-    {
-      id: 9,
-      selected: false,
-    },
-  ],
-  [
-    {
-      id: 10,
-      selected: false,
-    },
-    {
-      id: 11,
-      selected: false,
-    },
-    {
-      id: 12,
-      selected: false,
-    },
-  ],
-];
 
 function AchivementsDisplay() {
   const [selected, setSelected] = useState([]);
@@ -89,6 +25,12 @@ function AchivementsDisplay() {
   const navigation = useNavigation();
 
   const userCtx = useContext(UserContext);
+
+  const {t} = useTranslation();
+
+  useFocusEffect(useCallback(()=>{
+    fetchAchivements();
+  },[]))
 
   useEffect(() => {
     fetchAchivements();
@@ -209,8 +151,7 @@ function AchivementsDisplay() {
                   <View style={styles.footerContainer}>
                     <Text style={styles.footerTextTitle}>Error</Text>
                     <Text style={styles.footerText}>
-                      There was an error while loading. Please check your
-                      internet conection or try again later.
+                      {t("Error message")}
                     </Text>
                   </View>
                 )
@@ -224,7 +165,7 @@ function AchivementsDisplay() {
             />
           )}
           <Pressable onPress={showMoreHandler}>
-            <Text style={styles.moreText}>Press for more details</Text>
+            <Text style={styles.moreText}>{t("Press for more details")}</Text>
           </Pressable>
 
           <Overlay
@@ -234,7 +175,7 @@ function AchivementsDisplay() {
           >
             <View style={styles.infoInner}>
               <View style={styles.topInfo}>
-                <Text style={styles.infoTitle}>{infoAchivement.name}</Text>
+                <Text style={styles.infoTitle}>{t(infoAchivement.name)}</Text>
                 <Image
                   style={styles.img}
                   source={require("../../assets/icon.png")}
@@ -242,7 +183,7 @@ function AchivementsDisplay() {
               </View>
 
               <Text style={styles.infoDescription}>
-                {infoAchivement.description}
+                {t(infoAchivement.description)}
               </Text>
             </View>
           </Overlay>

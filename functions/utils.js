@@ -26,8 +26,7 @@ let currentUserID = 0;
  * @return {number} Returns a monotonically increasing integer.
  */
 function newUserID() {
-  const value = currentUserID;
-  currentUserID++;
+  const value = Math.floor(Math.random()*100000*Math.random()*Math.random());
   return value;
 }
 

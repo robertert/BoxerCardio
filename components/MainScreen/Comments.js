@@ -18,7 +18,10 @@ import {
   MenuTrigger,
   MenuOptions,
 } from "react-native-popup-menu";
-import Colors, { DUMMY_COMENTS } from "../../constants/colors";
+import Colors, {
+  DUMMY_COMENTS,
+  generageRandomUid,
+} from "../../constants/colors";
 import Comment from "./Coments/Comment";
 import { useKeyboard } from "@react-native-community/hooks";
 import { useContext, useEffect, useRef } from "react";
@@ -34,6 +37,8 @@ import {
   updateDoc,
   doc,
   increment,
+  getDoc,
+  runTransaction,
 } from "firebase/firestore";
 import { db, storage } from "../../firebaseConfig";
 import { UserContext } from "../../store/user-context";
@@ -49,6 +54,7 @@ import {
 } from "expo-image-picker";
 import { Overlay } from "@rneui/themed";
 import { Alert } from "react-native";
+import { useTranslation } from "react-i18next";
 
 const LIMIT = 10;
 
@@ -84,13 +90,58 @@ function Comments({ route }) {
   const [isDialogVisible, setIsDialogVisible] = useState(false);
   const [isPreviewVisible, setIsPreviewVisible] = useState(false);
   const [commentImage, setCommentImage] = useState();
+  const [userName, setUserName] = useState("");
+  const [scroll,setScroll] = useState(false);
 
   const id = route.params.id;
   const userId = route.params.userId;
 
   const userCtx = useContext(UserContext);
 
+
+  const { t } = useTranslation();
+
   ////// ALL HANDLERS ////////////////////////////////////////////////////////////////////
+
+  async function removeFriendHandler() {
+    try {
+      await runTransaction(db, async (transaction) => {
+        const data = await transaction.get(doc(db, `users/${userCtx.id}`));
+        const data1 = await transaction.get(doc(db, `users/${userId}`));
+
+        const friends = data
+          .data()
+          .friends.filter((friend) => friend.id !== userId);
+        const friends1 = data1
+          .data()
+          .friends.filter((friend) => friend.id !== userCtx.id);
+
+        transaction.update(doc(db, `users/${userCtx.id}`), {
+          friends: friends,
+        });
+        transaction.update(doc(db, `users/${userId}`), {
+          friends: friends1,
+        });
+      });
+    } catch (e) {
+      Alert.alert("Error", t("Error message"));
+      console.log(e);
+    }
+  }
+
+  async function fetchUserName() {
+    try {
+      const data = await getDoc(doc(db, `users/${userId}`));
+      setUserName(data.data().name);
+    } catch (e) {
+      console.log(e);
+      Alert.alert("Error", t("Error message"));
+    }
+  }
+
+  useEffect(() => {
+    fetchUserName();
+  }, []);
 
   function toggleIsVisible() {
     setIsDialogVisible((prev) => !prev);
@@ -102,7 +153,7 @@ function Comments({ route }) {
       return permissionResponse.granted;
     }
     if (cameraPermissionInformation.status === PermissionStatus.DENIED) {
-      Alert.alert("Error", "Permission not granted");
+      Alert.alert("Error", t("Permission not granted"));
       return false;
     }
     return true;
@@ -137,21 +188,22 @@ function Comments({ route }) {
   }
 
   async function sendPhotoHandler() {
-    const doc = await submitCommentHandler("image");
-    const commentId = doc.id;
     try {
+      const doc = await submitCommentHandler("image");
+      const commentId = doc;
+
       const fetchRes = await fetch(commentImage);
       const blob = await fetchRes.blob();
       await uploadBytes(ref(storage, `comments/${commentId}.jpg`), blob);
     } catch (e) {
       console.log(e);
-      Alert.alert("Error", "There was a problem. Please try again later.");
+      Alert.alert("Error", t("Error message"));
     }
     setIsPreviewVisible(false);
   }
   function cancelPhotoHandler() {
     setIsPreviewVisible(false);
-    setCommentImage = undefined;
+    setCommentImage(undefined);
   }
 
   function backHandler() {
@@ -167,28 +219,80 @@ function Comments({ route }) {
   }
 
   async function submitCommentHandler(type) {
-    let doc;
-    if (comment.trim().length < 100 || commentImage!==undefined) {
+    const commentId = generageRandomUid();
+    if (comment.trim().length < 100 || commentImage !== undefined) {
       // GÓRNY LIMIT DŁUGOŚCI KOMENTARZY
-      if (comment.trim().length > 0 || commentImage!==undefined) {
+      if (comment.trim().length > 0 || commentImage !== undefined) {
         // DOLNY LIMIT DŁUGOŚCI KOMENTARZY
         try {
-          await updateDoc(doc(db, `posts/${id}`), {
-            commentsNum: increment(1),
-          });
-        } catch (e) {
-          console.log(e);
-        }
-        
-        console.log(type);
-        if (replying) {
-          if (replyPerson.parentId === "") {
-            try {
-              doc = addDoc(
-                collection(
-                  db,
-                  `posts/${id}/comments/${replyPerson.id}/responses`
-                ),
+          await runTransaction(db, async (transaction) => {
+            const data = await transaction.get(doc(db, `posts/${id}`));
+            const data1 = await transaction.get(
+              doc(db, `users/${userId}/posts/${id}`)
+            );
+            transaction.update(doc(db, `posts/${id}`), {
+              commentsNum: data.data().commentsNum + 1,
+            });
+
+            transaction.update(doc(db, `users/${userId}/posts/${id}`), {
+              commentsNum: data1.data().commentsNum + 1,
+            });
+            if (replying) {
+              if (replyPerson.parentId === "") {
+                transaction.set(
+                  doc(
+                    db,
+                    `posts/${id}/comments/${
+                      replyPerson.id
+                    }/responses/${commentId}`
+                  ),
+                  {
+                    type: type,
+                    userId: userCtx.id,
+                    name: userCtx.name,
+                    content: comment.trim(),
+                    createDate: new Date(),
+                    areResponses: false,
+                  }
+                );
+
+                transaction.update(
+                  doc(db, `posts/${id}/comments/${replyPerson.id}`),
+                  {
+                    areResponses: true,
+                  }
+                );
+              } else {
+                transaction.set(
+                  doc(
+                    db,
+                    `posts/${id}/comments/${replyPerson.parentId}/responses/${
+                      replyPerson.id
+                    }/responses/${commentId}`
+                  ),
+                  {
+                    type: type,
+                    userId: userCtx.id,
+                    name: userCtx.name,
+                    content: comment.trim(),
+                    createDate: new Date(),
+                    areResponses: false,
+                  }
+                );
+
+                transaction.update(
+                  doc(
+                    db,
+                    `posts/${id}/comments/${replyPerson.parentId}/responses/${replyPerson.id}`
+                  ),
+                  {
+                    areResponses: true,
+                  }
+                );
+              }
+            } else {
+              transaction.set(
+                doc(db, `posts/${id}/comments/${commentId}`),
                 {
                   type: type,
                   userId: userCtx.id,
@@ -198,61 +302,11 @@ function Comments({ route }) {
                   areResponses: false,
                 }
               );
-              await Promise.all([
-                doc,
-                updateDoc(doc(db, `posts/${id}/comments/${replyPerson.id}`), {
-                  areResponses: true,
-                }),
-              ]);
-            } catch (e) {
-              console.log(e);
             }
-          } else {
-            try {
-              doc = addDoc(
-                collection(
-                  db,
-                  `posts/${id}/comments/${replyPerson.parentId}/responses/${replyPerson.id}/responses`
-                ),
-                {
-                  type: type,
-                  userId: userCtx.id,
-                  name: userCtx.name,
-                  content: comment.trim(),
-                  createDate: new Date(),
-                  areResponses: false,
-                }
-              )
-              await Promise.all([
-                updateDoc(
-                  doc(
-                    db,
-                    `posts/${id}/comments/${replyPerson.parentId}/responses/${replyPerson.id}`
-                  ),
-                  {
-                    areResponses: true,
-                  }
-                ),
-                doc
-              ]);
-            } catch (e) {
-              console.log(e);
-            }
-          }
-        } else {
-          try {
-            doc = await addDoc(collection(db, `posts/${id}/comments`), {
-              type: type,
-              userId: userCtx.id,
-              name: userCtx.name,
-              content: comment.trim(),
-              createDate: new Date(),
-              areResponses: false,
-            });
-          } catch (e) {
-            
-            console.log(e);
-          }
+          });
+        } catch (e) {
+          console.log(e);
+          Alert.alert("Error", t("Error message"));
         }
         setFirstLoading(true);
         setCommentData([]);
@@ -261,13 +315,19 @@ function Comments({ route }) {
         setReplying(false);
         setComment("");
         Keyboard.dismiss();
-        return doc;
       } else {
-        alert("Your comment must have at least 1 characters");
+        Alert.alert(
+          t("Too short!"),
+          t("Your comment must have at least 1 characters")
+        );
       }
     } else {
-      alert("Your comment can't have more that 105 characters");
+      Alert.alert(
+        t("Too long!"),
+        t("Your comment can't have more that 105 characters")
+      );
     }
+    return commentId;
   }
 
   function replyHandler({ id, name }, parentId) {
@@ -364,16 +424,14 @@ function Comments({ route }) {
       }
 
       setCommentData([...readyComments]);
-      return true;
     } catch (error) {
       console.log(error);
-      setIsErrorRender(false); //////// ZMIENIĆ POŹŃEJ
-      return [];
+      setIsErrorRender(true); //////// ZMIENIĆ POŹŃEJ
     }
   }
 
   async function nextFetch() {
-    if (isNextPage) {
+    if (isNextPage){
       setIsLoading(true);
       try {
         const comments = await getDocs(
@@ -400,13 +458,14 @@ function Comments({ route }) {
           setIsNextPage(false);
         }
 
-        setCommentData((prev) => [...prev, ...readyComments]);
-
-        return true;
-      } catch (error) {
-        console.log(error);
+        setCommentData((prev) => {
+          //console.log(readyComments);
+          //console.log(prev);
+          return [...prev, ...readyComments]
+        });
+      } catch (e) {
+        console.log(e);
         setIsErrorRender(true); //////// ZMIENIĆ POŹŃEJ
-        return [];
       }
     }
   }
@@ -427,7 +486,7 @@ function Comments({ route }) {
         </Pressable>
         <View style={styles.user}>
           <Image source={{ uri: image }} style={styles.userImage} />
-          <Text style={styles.userName}>Mankowska</Text>
+          <Text style={styles.userName}>{userName}</Text>
         </View>
         <Menu>
           <MenuTrigger>
@@ -440,11 +499,14 @@ function Comments({ route }) {
               optionsWrapper: styles.infoWraper,
             }}
           >
-            <MenuOption onSelect={viewProfileHandler} text="View profile" />
+            <MenuOption
+              onSelect={viewProfileHandler}
+              text={t("View profile")}
+            />
             <Divider />
             <MenuOption
-              onSelect={() => alert(`Removed friends`)}
-              text="Remove friend"
+              onSelect={removeFriendHandler}
+              text={t("Remove friend")}
             />
           </MenuOptions>
         </Menu>
@@ -470,11 +532,16 @@ function Comments({ route }) {
                 renderItem={renderCommentHandler}
                 keyExtractor={(item) => item.id}
                 onEndReached={({ distanceFromEnd }) => {
-                  if (distanceFromEnd < 5) {
+                  console.log(distanceFromEnd);
+                  if (distanceFromEnd === 0 && !scroll){
                     nextFetch();
+                    setScroll(true);
                   }
                 }}
                 onEndReachedThreshold={0}
+                onMomentumScrollBegin={()=>{
+                  setScroll(false)
+                }}
                 refreshing={refresh}
                 onRefresh={async () => {
                   try {
@@ -491,7 +558,9 @@ function Comments({ route }) {
                 }}
                 ListEmptyComponent={
                   <Text style={styles.errorText}>
-                    There aren't any comments yet. Be the first to comment!
+                    {t(
+                      "There aren't any comments yet. Be the first to comment!"
+                    )}
                   </Text>
                 }
                 ListFooterComponent={
@@ -508,10 +577,7 @@ function Comments({ route }) {
           ) : (
             <View style={styles.footerContainer}>
               <Text style={styles.footerTextTitle}>Error</Text>
-              <Text style={styles.footerText}>
-                There was an error while loading. Please check your internet
-                conection or try again later.
-              </Text>
+              <Text style={styles.footerText}>{t("Error message")}</Text>
             </View>
           )
         ) : (
@@ -525,7 +591,7 @@ function Comments({ route }) {
       {replying && (
         <View style={styles.replying}>
           <Text style={styles.replyingText}>
-            Replying to {replyPerson.name}
+            {t("Replying to replyPerson.name", { name: replyPerson.name })}
           </Text>
           <Pressable onPress={replyCloseHandler}>
             <AntDesign name="close" size={24} color="white" />
@@ -547,13 +613,13 @@ function Comments({ route }) {
         <TextInput
           ref={commentInputRef}
           style={styles.input}
-          placeholder="Add your comment here"
+          placeholder={t("Add your comment here")}
           value={comment}
           onChangeText={commentChangeHandler}
           multiline={true}
         />
         <Pressable onPress={submitCommentHandler.bind(this, "text")}>
-          <Text style={styles.submitText}>Publish</Text>
+          <Text style={styles.submitText}>{t("Publish")}</Text>
         </Pressable>
       </View>
       <Overlay
@@ -565,14 +631,16 @@ function Comments({ route }) {
           <Pressable onPress={imagePressHandler.bind(this, "library")}>
             <View style={styles.optionContainer}>
               <MaterialIcons name="photo-library" size={24} color="white" />
-              <Text style={styles.dialogOption}>Chose photo from library</Text>
+              <Text style={styles.dialogOption}>
+                {t("Choose photo from library")}
+              </Text>
             </View>
           </Pressable>
           <Divider />
           <Pressable onPress={imagePressHandler.bind(this, "camera")}>
             <View style={styles.optionContainer}>
               <MaterialIcons name="photo-camera" size={24} color="white" />
-              <Text style={styles.dialogOption}>Take new photo</Text>
+              <Text style={styles.dialogOption}>{t("Take new photo")}</Text>
             </View>
           </Pressable>
         </View>
@@ -587,12 +655,12 @@ function Comments({ route }) {
         <View style={styles.buttonsConatiner}>
           <Pressable onPress={cancelPhotoHandler}>
             <View style={styles.buttonContainer}>
-              <Text style={styles.buttonText}>Cancel</Text>
+              <Text style={styles.buttonText}>{t("Cancel")}</Text>
             </View>
           </Pressable>
           <Pressable onPress={sendPhotoHandler}>
             <View style={styles.buttonContainer}>
-              <Text style={styles.buttonText}>Send</Text>
+              <Text style={styles.buttonText}>{t("Send")}</Text>
             </View>
           </Pressable>
         </View>
@@ -668,7 +736,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary400,
     marginHorizontal: 20,
     borderRadius: 20,
-    justifyContent: "space-between",
     alignItems: "center",
     flexDirection: "row",
     paddingHorizontal: 20,
@@ -679,7 +746,8 @@ const styles = StyleSheet.create({
   },
   input: {
     marginLeft: 10,
-    width: "75%",
+    marginRight: 10,
+    flex: 1,
     color: Colors.primary100,
   },
   submitText: {

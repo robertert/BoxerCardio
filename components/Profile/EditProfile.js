@@ -35,6 +35,7 @@ import { auth, db, storage } from "../../firebaseConfig";
 import { UserContext } from "../../store/user-context";
 import { EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { useTranslation } from "react-i18next";
 
 function EditProfile() {
   const [cameraPermissionInformation, requestPermission] =
@@ -58,6 +59,8 @@ function EditProfile() {
   const [errorMessage, setErrorMessage] = useState();
   const [errorMessagePassowrd, setErrorMessagePasssword] = useState();
 
+  const {t} = useTranslation();
+
   function toggleIsVisible() {
     setIsDialogVisible((prev) => !prev);
   }
@@ -72,7 +75,7 @@ function EditProfile() {
       return permissionResponse.granted;
     }
     if (cameraPermissionInformation.status === PermissionStatus.DENIED) {
-      Alert.alert("Error", "Permission not granted");
+      Alert.alert("Error", t("Permission not granted"));
       return false;
     }
     return true;
@@ -135,7 +138,7 @@ function EditProfile() {
     ) {
       // dodac czy unikalna
       setErrorMessage(
-        "Username should be at least 2 characters long and contain only letters and numbers"
+        t("Username should be at least 2 characters long and contain only letters and numbers")
       );
       return;
     }
@@ -144,7 +147,7 @@ function EditProfile() {
       !email.includes(".")
       // dodac czy email jest zajety
     ) {
-      setErrorMessage("Wrong email");
+      setErrorMessage(t("Wrong email"));
       return;
     }
     try {
@@ -155,16 +158,16 @@ function EditProfile() {
         query(collection(db, "users"), where("name", "==", userName))
       );
       if (!data.empty && data.docs[0].id !== userCtx.id) {
-        setErrorMessage("This email is taken.");
+        setErrorMessage(t("This email is taken."));
         return;
       }
       if (!data1.empty && userName != userCtx.name) {
-        setErrorMessage("This username is taken.");
+        setErrorMessage(t("This username is taken."));
         return;
       }
     } catch (e) {
       console.log(e);
-      Alert.alert("Error", "Something went wrong!");
+      Alert.alert("Error", t("Error message"));
     }
     setCheckPasswordVisible(true);
   }
@@ -192,11 +195,11 @@ function EditProfile() {
     } catch (e) {
       console.log(e);
       if (e.code === "auth/wrong-password")
-        setErrorMessagePasssword("Wrong password!");
+        setErrorMessagePasssword(t("Wrong password!"));
       else if (e.code === "auth/too-many-requests") {
-        setErrorMessagePasssword("Too many failed atempts! Try again later.");
+        setErrorMessagePasssword(t("Too many failed atempts! Try again later."));
       } else {
-        Alert.alert("Error", "Something wrong!");
+        Alert.alert("Error", t("Error message"));
       }
     }
   }
@@ -208,7 +211,7 @@ function EditProfile() {
       setEmail(data.data().email);
     } catch (e) {
       console.log(e);
-      Alert.alert("Error", "Something went wrong!");
+      Alert.alert("Error", t("Error message"));
     }
     try {
       const url = await getDownloadURL(
@@ -236,11 +239,11 @@ function EditProfile() {
       <Pressable onPress={toggleIsVisible}>
         <View style={styles.imageContainer}>
           <Image source={{ uri: image }} style={styles.img} />
-          <Text style={styles.infoPhoto}>Press to change photo</Text>
+          <Text style={styles.infoPhoto}>{t("Press to change photo")}</Text>
         </View>
       </Pressable>
       <View style={styles.subContainer}>
-        <Text style={styles.inputTitle}>Username</Text>
+        <Text style={styles.inputTitle}>{t("Username")}</Text>
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
@@ -265,13 +268,13 @@ function EditProfile() {
       </View>
       <Pressable onPress={changePasswordHandler}>
         <View style={styles.buttonContainer}>
-          <Text style={styles.buttonText}>Change password</Text>
+          <Text style={styles.buttonText}>{t("Change password")}</Text>
         </View>
       </Pressable>
       <Text style={styles.errorMessage}>{errorMessage}</Text>
       <Pressable onPress={saveHandler}>
         <View style={styles.saveButtonContainer}>
-          <Text style={styles.saveButtonText}>Save</Text>
+          <Text style={styles.saveButtonText}>{t("Save")}</Text>
         </View>
       </Pressable>
       <Overlay
@@ -279,7 +282,7 @@ function EditProfile() {
         onBackdropPress={() => setCheckPasswordVisible(false)}
         overlayStyle={styles.dialogContainer}
       >
-        <Text style={styles.passwordText}>Enter password</Text>
+        <Text style={styles.passwordText}>{t("Enter password")}</Text>
         <View style={styles.passwordContainer}>
           <TextInput
             style={styles.passwordInput}
@@ -292,7 +295,7 @@ function EditProfile() {
         <Text style={styles.errorMessage}>{errorMessagePassowrd}</Text>
         <Pressable onPress={submitPasswordHandler}>
           <View style={styles.buttonContainer}>
-            <Text style={styles.buttonText}>Submit</Text>
+            <Text style={styles.buttonText}>{t("Submit")}</Text>
           </View>
         </Pressable>
       </Overlay>
@@ -305,14 +308,14 @@ function EditProfile() {
           <Pressable onPress={imagePressHandler.bind(this, "library")}>
             <View style={styles.optionContainer}>
               <MaterialIcons name="photo-library" size={24} color="white" />
-              <Text style={styles.dialogOption}>Chose photo from library</Text>
+              <Text style={styles.dialogOption}>{t("Choose photo from library")}</Text>
             </View>
           </Pressable>
           <Divider />
           <Pressable onPress={imagePressHandler.bind(this, "camera")}>
             <View style={styles.optionContainer}>
               <MaterialIcons name="photo-camera" size={24} color="white" />
-              <Text style={styles.dialogOption}>Take new photo</Text>
+              <Text style={styles.dialogOption}>{t("Take new photo")}</Text>
             </View>
           </Pressable>
         </View>

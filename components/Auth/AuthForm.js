@@ -16,6 +16,7 @@ import { AuthContext } from "../../store/auth-context";
 import { useNavigation } from "@react-navigation/native";
 import { UserContext } from "../../store/user-context";
 import { SettingsContext } from "../../store/settings-context";
+import { useTranslation } from "react-i18next";
 
 function AuthForm() {
   const [username, setUsername] = useState();
@@ -33,6 +34,8 @@ function AuthForm() {
   const userCtx = useContext(UserContext);
   const settingsCtx = useContext(SettingsContext);
   const navigation = useNavigation();
+
+  const { t, i18n } = useTranslation();
 
   const usernameChangeHandler = (enteredUsername) => {
     setInvaildUsername(false);
@@ -69,7 +72,9 @@ function AuthForm() {
       // dodac czy unikalna
       setInvaildUsername(true);
       authCtx.changeMessage(
-        "Username should be at least 2 characters long and contain only letters and numbers"
+        t(
+          "Username should be at least 2 characters long and contain only letters and numbers"
+        )
       );
       return false;
     }
@@ -79,17 +84,17 @@ function AuthForm() {
       // dodac czy email jest zajety
     ) {
       setInvalidEmail(true);
-      authCtx.changeMessage("Wrong email");
+      authCtx.changeMessage(t("Wrong email"));
       return false;
     }
     if (password.trim().length < 8) {
       setInvalidPassword(true);
-      authCtx.changeMessage("Password should contain at least 8 characters");
+      authCtx.changeMessage(t("Password should contain at least 8 characters"));
       return false;
     }
     if (password.trim() != confirmPassword.trim()) {
       setInvalidConfirmPassword(true);
-      authCtx.changeMessage("Password don't match");
+      authCtx.changeMessage(t("Password don't match"));
       return false;
     }
 
@@ -159,7 +164,7 @@ function AuthForm() {
               />
             </View>
             <View style={styles.imputContainer}>
-              <Text style={styles.label}>Username</Text>
+              <Text style={styles.label}>{t("Username")}</Text>
               <TextInput
                 style={[styles.input, invalidUsername && styles.invalid]}
                 onChangeText={usernameChangeHandler}
@@ -173,13 +178,13 @@ function AuthForm() {
                 onChangeText={emailChangeHandler}
                 value={email}
               />
-              <Text style={styles.label}>Password</Text>
+              <Text style={styles.label}>{t("Password")}</Text>
               <TextInput
                 style={[styles.input, invalidPassword && styles.invalid]}
                 onChangeText={passwordChangeHandler}
                 value={password}
               />
-              <Text style={styles.label}>Confirm Password</Text>
+              <Text style={styles.label}>{t("Confirm Password")}</Text>
               <TextInput
                 style={[styles.input, invalidConfirmPassword && styles.invalid]}
                 onChangeText={confirmPasswordChangeHandler}
@@ -187,13 +192,13 @@ function AuthForm() {
               />
             </View>
             <Text style={styles.invalidMessage}>{authCtx.message}</Text>
-            <ButtonPrim text="Sign up" onPress={submitRegisterHandler} />
+            <ButtonPrim text={t("Sign up")} onPress={submitRegisterHandler} />
             <Pressable
               onPress={toggleScreenPressHandler}
               style={({ pressed }) => pressed && { opacity: 0.4 }}
             >
               <Text style={[styles.label, { marginTop: 30 }]}>
-                Already have an account? Log in
+                {t("Already have an account? Log in")}
               </Text>
             </Pressable>
           </View>
@@ -218,7 +223,7 @@ function AuthForm() {
                 onChangeText={emailChangeHandler}
                 value={email}
               />
-              <Text style={styles.label}>Password</Text>
+              <Text style={styles.label}>{t("Password")}</Text>
               <TextInput
                 style={[styles.input, invalidPassword && styles.invalid]}
                 onChangeText={passwordChangeHandler}
@@ -226,13 +231,13 @@ function AuthForm() {
               />
             </View>
             <Text style={styles.invalidMessage}>{authCtx.message}</Text>
-            <ButtonPrim text="Log in" onPress={logInHandler} />
+            <ButtonPrim text={t("Log in")} onPress={logInHandler} />
             <Pressable
               onPress={resetPasswordHandler}
               style={({ pressed }) => pressed && { opacity: 0.4 }}
             >
               <Text style={[styles.label, { marginTop: 30 }]}>
-                Forgot your password? Click here
+                {t("Forgot your password? Click here")}
               </Text>
             </Pressable>
             <Pressable
@@ -240,7 +245,7 @@ function AuthForm() {
               style={({ pressed }) => pressed && { opacity: 0.4 }}
             >
               <Text style={[styles.label, { marginTop: 5 }]}>
-                Don't have an account? Create a new one
+                {t("Don't have an account? Create a new one")}
               </Text>
             </Pressable>
           </View>

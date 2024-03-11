@@ -13,105 +13,8 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "../../../firebaseConfig";
 import { UserContext } from "../../../store/user-context";
 import { ActivityIndicator } from "react-native-paper";
+import { useTranslation } from "react-i18next";
 
-const DUMMY_ACHIVEMENTS = [
-  [
-    {
-      id: 1,
-      selected: false,
-    },
-    {
-      id: 2,
-      selected: false,
-    },
-    {
-      id: 3,
-      selected: false,
-    },
-  ],
-  [
-    {
-      id: 4,
-      selected: false,
-    },
-    {
-      id: 5,
-      selected: false,
-    },
-    {
-      id: 6,
-      selected: false,
-    },
-  ],
-  [
-    {
-      id: 7,
-      selected: false,
-    },
-    {
-      id: 8,
-      selected: false,
-    },
-    {
-      id: 9,
-      selected: false,
-    },
-  ],
-  [
-    {
-      id: 10,
-      selected: false,
-    },
-    {
-      id: 11,
-      selected: false,
-    },
-    {
-      id: 12,
-      selected: false,
-    },
-  ],
-  [
-    {
-      id: 13,
-      selected: false,
-    },
-    {
-      id: 14,
-      selected: false,
-    },
-    {
-      id: 15,
-      selected: false,
-    },
-  ],
-  [
-    {
-      id: 16,
-      selected: false,
-    },
-    {
-      id: 17,
-      selected: false,
-    },
-    {
-      id: 18,
-      selected: false,
-    },
-  ],
-];
-
-const DUMMY_ACHIVEMENTS1 = [
-  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
-];
-const DUMMY_COUNTER = 0;
-
-const DUMMY_ACHIVEMENT = {
-  id: 1,
-  name: "Ultra boxer",
-  photoUrl: "url",
-  description: "1000 punches in 1 week ",
-};
 
 function ChooseAchivements() {
   const shelfContext = useContext(ShelfContext);
@@ -126,6 +29,8 @@ function ChooseAchivements() {
   const [isError, setIsError] = useState(false);
 
   const userCtx = useContext(UserContext);
+
+  const {t} = useTranslation();
 
   useEffect(() => {
     fetchAchivements();
@@ -278,8 +183,7 @@ function ChooseAchivements() {
               <View style={styles.footerContainer}>
                 <Text style={styles.footerTextTitle}>Error</Text>
                 <Text style={styles.footerText}>
-                  There was an error while loading. Please check your internet
-                  conection or try again later.
+                  {t("Error message")}
                 </Text>
               </View>
             )
@@ -292,7 +196,7 @@ function ChooseAchivements() {
           style={{ marginTop: 20 }}
         />
       )}
-      <Text style={styles.counterText}>{counter} of 12</Text>
+      <Text style={styles.counterText}>{t("{counter} of 12",{counter: counter})}</Text>
 
       <Overlay
         isVisible={isInfoVisible}

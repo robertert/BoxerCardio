@@ -1,4 +1,11 @@
-import { View, TextInput, Text, StyleSheet, Pressable } from "react-native";
+import {
+  View,
+  TextInput,
+  Text,
+  StyleSheet,
+  Pressable,
+  Keyboard,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors from "../../constants/colors";
 import { Ionicons } from "@expo/vector-icons";
@@ -15,6 +22,7 @@ import {
   MenuTrigger,
   MenuOptions,
 } from "react-native-popup-menu";
+import { useTranslation } from "react-i18next";
 
 const DUMMY_STATS = {
   timeSpent: 123,
@@ -40,6 +48,8 @@ function ProfileStats({ route }) {
   const [isVisibleMonth, setIsVisibleMonth] = useState(false);
   const [isVisibleYear, setIsVisibleYear] = useState(false);
   const [message, setMessage] = useState("");
+
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (timeRange === "Day") {
@@ -68,13 +78,13 @@ function ProfileStats({ route }) {
   async function fetchStats(type, year = "", month = "", day = "") {
     let path = "";
     if (type === "All time") {
-      path = `users/${id}/stats/allTime`;
+      path = `users/${id}/stats/AllTime`;
     } else if (type === "Year") {
       path = `users/${id}/stats/${year}`;
     } else if (type === "Month") {
-      path = `users/${id}/stats/${year}.${month}`;
+      path = `users/${id}/stats/${year}:${month}`;
     } else if (type === "Day") {
-      path = `users/${id}/stats/${year}.${month}.${day}`;
+      path = `users/${id}/stats/${year}:${month}:${day}`;
     }
 
     setIsLoading(true);
@@ -97,38 +107,39 @@ function ProfileStats({ route }) {
     const date = new Date();
     if (timeRange === "Year") {
       if (isNaN(year) || year % 1 != 0) {
-        setMessage("Enter a number");
+        setMessage(t("Enter a number"));
         return;
       }
       if (date.getFullYear() < year || date.getFullYear() - year > 5) {
         setMessage(
-          `You can only enter year between ${
-            date.getFullYear() - 5
-          } and ${date.getFullYear()}`
+          t(
+            "You can only enter year between ${date.getFullYear() - 5} and ${date.getFullYear()}",
+            { start: date.getFullYear() - 5, end: date.getFullYear() }
+          )
         );
         return;
       }
     } else if (timeRange === "Month") {
       if (isNaN(year) || year % 1 != 0 || isNaN(month) || month % 1 != 0) {
-        setMessage("Enter a number");
+        setMessage(t("Enter a number"));
         return;
       }
       if (month < 1 || month > 12) {
-        setMessage("Enter valid month number");
+        setMessage(t("Enter valid month number"));
         return;
       }
       if (
         date.getFullYear() < year ||
         (date.getFullYear() == year && date.getMonth() + 1 < month)
       ) {
-        setMessage("You can't enter future date.");
+        setMessage(t("You can't enter future date."));
         return;
       }
       if (
         date.getFullYear() - 1 > year ||
         (date.getFullYear() - 1 == year && date.getMonth() + 2 > month)
       ) {
-        setMessage("You can only enter date that was later than one year ago.");
+        setMessage(t("You can only enter a date in the last 12 months"));
         return;
       }
     } else if (timeRange === "Day") {
@@ -141,17 +152,17 @@ function ProfileStats({ route }) {
         isNaN(day) ||
         day % 1 != 0
       ) {
-        setMessage("Enter a number");
+        setMessage(t("Enter a number"));
         return;
       }
       if (newDate.getMonth() + 1 != month || newDate.getFullYear() != year) {
-        setMessage("Enter valid date");
+        setMessage(t("Enter valid date"));
         return;
       } else if (date < newDate) {
-        setMessage("You can't enter future date.");
+        setMessage(t("You can't enter future date."));
         return;
       } else if ((date - newDate) / (1000 * 3600 * 24) >= 31) {
-        setMessage("You can only enter date that was later than 30 days ago.");
+        setMessage(t("You can only enter date that was in the last 30 days."));
         return;
       }
     }
@@ -179,118 +190,142 @@ function ProfileStats({ route }) {
         { paddingTop: insets.top, paddingBottom: insets.bottom },
       ]}
     >
-      <View style={styles.header}>
-        <Pressable onPress={goBackHandler}>
-          <Ionicons name="chevron-back" size={42} color="white" />
-        </Pressable>
-      </View>
-      <View style={styles.pickerContainer}>
-        <View style={styles.outherPickerContainer}>
-          <Menu>
-            <MenuTrigger>
-              <View style={styles.innerPickerContainer}>
-                <Text style={styles.pickerText}>{timeRange}</Text>
-                <AntDesign name="down" size={10} color="white" />
+      <Pressable
+        onPress={() => {
+          Keyboard.dismiss();
+        }}
+      >
+        <View style={styles.header}>
+          <Pressable onPress={goBackHandler}>
+            <Ionicons name="chevron-back" size={42} color="white" />
+          </Pressable>
+        </View>
+        <View style={styles.pickerContainer}>
+          <View style={styles.outherPickerContainer}>
+            <Menu>
+              <MenuTrigger>
+                <View style={styles.innerPickerContainer}>
+                  <Text style={styles.pickerText}>{t(timeRange)}</Text>
+                  <AntDesign name="down" size={10} color="white" />
+                </View>
+              </MenuTrigger>
+              <MenuOptions
+                customStyles={{
+                  optionsContainer: styles.infoS,
+                  optionText: styles.infoTextS,
+                  optionsWrapper: styles.infoWraperS,
+                }}
+              >
+                <MenuOption
+                  onSelect={() => setTimeRange("All time")}
+                  text={t("All time")}
+                />
+                <Divider />
+                <MenuOption
+                  onSelect={() => setTimeRange("Year")}
+                  text={t("Year")}
+                />
+                <Divider />
+                <MenuOption
+                  onSelect={() => setTimeRange("Month")}
+                  text={t("Month")}
+                />
+                <Divider />
+                <MenuOption
+                  onSelect={() => setTimeRange("Day")}
+                  text={t("Day")}
+                />
+              </MenuOptions>
+            </Menu>
+          </View>
+        </View>
+        <View style={styles.inputsContainer}>
+          {isVisibleDay && (
+            <View style={styles.outherInputContainer}>
+              <Text style={styles.inputLabel}>{t("Day")}</Text>
+              <View style={styles.inputContainer}>
+                <TextInput
+                  value={day}
+                  style={styles.input}
+                  keyboardType="number-pad"
+                  onChangeText={dayChangeHandler}
+                  maxLength={2}
+                />
               </View>
-            </MenuTrigger>
-            <MenuOptions
-              customStyles={{
-                optionsContainer: styles.infoS,
-                optionText: styles.infoTextS,
-                optionsWrapper: styles.infoWraperS,
-              }}
-            >
-              <MenuOption
-                onSelect={() => setTimeRange("All time")}
-                text="All time"
-              />
-              <Divider />
-              <MenuOption onSelect={() => setTimeRange("Year")} text="Year" />
-              <Divider />
-              <MenuOption onSelect={() => setTimeRange("Month")} text="Month" />
-              <Divider />
-              <MenuOption onSelect={() => setTimeRange("Day")} text="Day" />
-            </MenuOptions>
-          </Menu>
+            </View>
+          )}
+          {isVisibleMonth && (
+            <View style={styles.outherInputContainer}>
+              <Text style={styles.inputLabel}>{t("Month")}</Text>
+              <View style={styles.inputContainer}>
+                <TextInput
+                  value={month}
+                  style={styles.input}
+                  keyboardType="number-pad"
+                  onChangeText={monthChangeHandler}
+                  maxLength={2}
+                />
+              </View>
+            </View>
+          )}
+          {isVisibleYear && (
+            <View style={styles.outherInputContainer}>
+              <Text style={styles.inputLabel}>{t("Year")}</Text>
+              <View style={styles.inputContainer}>
+                <TextInput
+                  value={year}
+                  style={styles.input}
+                  keyboardType="number-pad"
+                  onChangeText={yearChangeHandler}
+                  maxLength={4}
+                />
+              </View>
+            </View>
+          )}
         </View>
-      </View>
-      <View style={styles.inputsContainer}>
-        {isVisibleDay && (
-          <View style={styles.outherInputContainer}>
-            <Text style={styles.inputLabel}>Day</Text>
-            <View style={styles.inputContainer}>
-              <TextInput
-                value={day}
-                style={styles.input}
-                keyboardType="number-pad"
-                onChangeText={dayChangeHandler}
-                maxLength={2}
-              />
+        {!(!isVisibleDay && !isVisibleMonth && !isVisibleYear) && (
+          <Pressable onPress={submitHandler}>
+            <View style={styles.buttonContainer}>
+              <Text style={styles.buttonText}>{t("Submit")}</Text>
             </View>
-          </View>
+          </Pressable>
         )}
-        {isVisibleMonth && (
-          <View style={styles.outherInputContainer}>
-            <Text style={styles.inputLabel}>Month</Text>
-            <View style={styles.inputContainer}>
-              <TextInput
-                value={month}
-                style={styles.input}
-                keyboardType="number-pad"
-                onChangeText={monthChangeHandler}
-                maxLength={2}
-              />
-            </View>
+        <Text style={styles.errorMessage}>{message}</Text>
+        {!isLoading ? (
+          <View style={styles.statContainer}>
+            <Text style={styles.statText}>
+              {t("Time spend:")}{" "}
+              <Text style={styles.statValue}>
+                {stats.timeSpent ? Math.round(stats.timeSpent / 36) / 100 : 0} h
+              </Text>
+            </Text>
+            <Text style={styles.statText}>
+              {t("Punches")}{": "}
+              <Text style={styles.statValue}>
+                {stats.punches ? stats.punches : 0}
+              </Text>
+            </Text>
+            <Text style={styles.statText}>
+              {t("Calories") + ": "}
+              <Text style={styles.statValue}>
+                {stats.calories ? stats.calories : 0} kcal
+              </Text>
+            </Text>
+            <Text style={styles.statText}>
+              {t("Number of training sessions")}{": "}
+              <Text style={styles.statValue}>
+                {stats.sessionsNum ? stats.sessionsNum : 0}
+              </Text>
+            </Text>
           </View>
+        ) : (
+          <ActivityIndicator
+            size={"large"}
+            color={Colors.accent500}
+            style={{ marginTop: 20 }}
+          />
         )}
-        {isVisibleYear && (
-          <View style={styles.outherInputContainer}>
-            <Text style={styles.inputLabel}>Year</Text>
-            <View style={styles.inputContainer}>
-              <TextInput
-                value={year}
-                style={styles.input}
-                keyboardType="number-pad"
-                onChangeText={yearChangeHandler}
-                maxLength={4}
-              />
-            </View>
-          </View>
-        )}
-      </View>
-      {!(!isVisibleDay && !isVisibleMonth && !isVisibleYear) && (
-        <Pressable onPress={submitHandler}>
-          <View style={styles.buttonContainer}>
-            <Text style={styles.buttonText}>Submit</Text>
-          </View>
-        </Pressable>
-      )}
-      <Text style={styles.errorMessage}>{message}</Text>
-      {!isLoading ? (
-        <View style={styles.statContainer}>
-          <Text style={styles.statText}>
-            Time spend:{" "}
-            <Text style={styles.statValue}>{stats.timeSpent} h</Text>
-          </Text>
-          <Text style={styles.statText}>
-            Punches: <Text style={styles.statValue}>{stats.punches}</Text>
-          </Text>
-          <Text style={styles.statText}>
-            Calories:{" "}
-            <Text style={styles.statValue}>{stats.calories} kcal</Text>
-          </Text>
-          <Text style={styles.statText}>
-            Number of training sessions:{" "}
-            <Text style={styles.statValue}>{stats.trainingSesions}</Text>
-          </Text>
-        </View>
-      ) : (
-        <ActivityIndicator
-          size={"large"}
-          color={Colors.accent500}
-          style={{ marginTop: 20 }}
-        />
-      )}
+      </Pressable>
     </View>
   );
 }
@@ -399,8 +434,6 @@ const styles = StyleSheet.create({
     width: "80%",
     borderRadius: 15,
     backgroundColor: Colors.primary500,
-    alignItems: "center",
-    justifyContent: "center",
   },
   input: {
     textAlign: "center",

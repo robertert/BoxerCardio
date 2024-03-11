@@ -24,6 +24,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { UserContext } from "../store/user-context";
+import { useTranslation } from "react-i18next";
 
 const DUMMY_NOTIFICATIONS = [
   {
@@ -65,6 +66,8 @@ function NotificationScreen() {
   const [isNextPage, setIsNextPage] = useState(false);
   const [isError, setIsError] = useState(false);
   const [refresh, setRefresh] = useState(false);
+
+  const {t} = useTranslation();
 
   useEffect(() => {
     initialFetchNotifications();
@@ -139,25 +142,25 @@ function NotificationScreen() {
       return (
         <Notification
           createDate={item.createTime}
-          groupPhotoUrl={item.groupPhotoUrl}
           groupName={item.groupName}
           groupId={item.groupId}
+          groupShort={item.groupShort}
           id={item.id}
           type={item.type}
-          text={item.text}
+          gotText={item.text}
           photoUrl={item.photoUrl}
           userId={item.userId}
-          name={item.name}
+          userName={item.name}
         />
       );
     }
     return (
       <Notification
-        name={item.name}
+        userName={item.name}
         createDate={item.createTime}
         id={item.id}
         type={item.type}
-        text={item.text}
+        gotText={item.text}
         photoUrl={item.photoUrl}
         userId={item.userId}
       />
@@ -172,7 +175,7 @@ function NotificationScreen() {
       ]}
     >
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Latest notifications</Text>
+        <Text style={styles.headerTitle}>{t("Latest notifications")}</Text>
       </View>
       <View style={styles.notificationsContainer}>
         {!isFirstLoading ? (
@@ -198,7 +201,7 @@ function NotificationScreen() {
               }
             }}
             ListEmptyComponent={
-              <Text style={styles.emptyText}>There is no notifications.</Text>
+              <Text style={styles.emptyText}>{t("There is no notifications.")}</Text>
             }
             ListFooterComponent={
               !isError ? (
@@ -213,8 +216,7 @@ function NotificationScreen() {
                 <View style={styles.footerContainer}>
                   <Text style={styles.footerTextTitle}>Error</Text>
                   <Text style={styles.footerText}>
-                    There was an error while loading. Please check your internet
-                    conection or try again later.
+                    {t("Error message")}
                   </Text>
                 </View>
               )

@@ -6,7 +6,7 @@ import { View, Image, StyleSheet } from "react-native";
 import { storage } from "../../firebaseConfig";
 import { useState } from "react";
 
-function PostDisplay({id}) {
+function PostDisplay({id,userId}) {
   const navigation = useNavigation();
   const [image,setImage] = useState();
 
@@ -37,7 +37,7 @@ function PostDisplay({id}) {
   }
   
   function detailsHandler() {
-    navigation.navigate("posts-display-details");
+    navigation.navigate("posts-display-details",{id: userId});
   }
 
 

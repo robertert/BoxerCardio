@@ -1,7 +1,10 @@
 const admin = require("firebase-admin");
 const { logger } = require("firebase-functions/v1");
-
-async function createScore(playerID, score, firestore) {
+/** 
+* @param {admin.firestore.Firestore} firestore The database storing
+ *     the leaderboard.
+*/
+async function createScore(playerID, score, firestore, mode, date, group,name) {
   /**
    * This function assumes a minimum score of 0 and that value
    * is between min and max.
@@ -16,7 +19,7 @@ async function createScore(playerID, score, firestore) {
    *     and max.
    */
   function bucket(value, min, max) {
-    const bucketSize = (max - min) / 3;
+    const bucketSize = (max - min) / 20;
     const bucketMin = Math.floor(value / bucketSize) * bucketSize;
     const bucketMax = bucketMin + bucketSize;
     return { min: bucketMin, max: bucketMax };
@@ -63,7 +66,6 @@ async function createScore(playerID, score, firestore) {
     //logger.log("DOCS END:")
     if (snapshot.empty) {
       // This is the first score to be inserted into this node.
-      logger.log("empty");
       for (const write of pendingWrites) {
         //logger.log("UPDATING!");
         write(transaction);
@@ -79,12 +81,9 @@ async function createScore(playerID, score, firestore) {
     for (const node of snapshot.docs) {
       const data = node.data();
       if (data.exact !== undefined) {
-        logger.log("2");
         // This node held an exact score.
         let newRange = bucket(value, min, max);
         let tempRange = bucket(data.exact.score, min, max);
-        logger.log(tempRange);
-        logger.log(newRange);
         let same = true;
         if (newRange.min === tempRange.min && newRange.max === tempRange.max) {
           let docReference = node.ref;
@@ -99,8 +98,9 @@ async function createScore(playerID, score, firestore) {
             transaction.set(docReference, rangeData);
             newRange = bucket(value, tempRange.min, tempRange.max);
             tempRange = bucket(data.exact.score, tempRange.min, tempRange.max);
-            same = (newRange.min === tempRange.min && newRange.max === tempRange.max)
-            if(same){
+            same =
+              newRange.min === tempRange.min && newRange.max === tempRange.max;
+            if (same) {
               docReference = docReference.collection("scores").doc();
             }
           }
@@ -125,7 +125,6 @@ async function createScore(playerID, score, firestore) {
       }
 
       if (data.range.min <= value && data.range.max > value) {
-        logger.log("3");
         // The score belongs to this range that may have subvalues.
         // Increment the range's count in pendingWrites, since
         // subsequent recursion may incur more reads.
@@ -141,11 +140,7 @@ async function createScore(playerID, score, firestore) {
           }
           //logger.log("END UPDATING!")
         });
-        //logger.log(pendingWrites.length);
-        logger.log({ value: value, min: min, max: max });
         const newRange = bucket(value, min, max);
-        logger.log(newRange);
-        logger.log("END");
         //logger.log("NEXT ITERATION")
         return writeScoreToCollection(
           id,
@@ -169,9 +164,20 @@ async function createScore(playerID, score, firestore) {
       }
     }
   }
-
-  const scores = firestore.collection("scores");
-  const players = firestore.collection("players");
+  let mainDoc;
+  if(group === "Everyone"){
+    mainDoc = firestore.doc(`leaderboards/${mode}/dates/${date}`);
+  }
+  else{
+    mainDoc = firestore.doc(`trainingGroups/${group}/leaderboards/${mode}/dates/${date}`);
+  }
+  
+  if(!(await mainDoc.get()).exists){
+    mainDoc.create({});
+  }
+  
+  const scores = mainDoc.collection("scores");
+  const players = mainDoc.collection("players");
   return firestore.runTransaction((transaction) => {
     return writeScoreToCollection(
       playerID,
@@ -181,8 +187,9 @@ async function createScore(playerID, score, firestore) {
       transaction,
       []
     ).then(() => {
-      transaction.create(players.doc(), {
+      transaction.create(players.doc(playerID.toString()), {
         user: playerID,
+        name: name,
         score: score,
       });
     });
@@ -196,19 +203,29 @@ async function createScore(playerID, score, firestore) {
  * @return {Promise<Object<string, number>>} Returns a promise containing the
  *     player's rank and score.
  */
-async function readRank(playerID, firestore) {
+async function readRank(playerID, firestore, mode, date, group) {
   // ZROBIC TAK ŻEBY BRALO Z BODY REQUESTA A NIE Z RECZNIE WPISYWANIE I ZOBACZYC CO SIE DZIEJE JAK JEST EVEN
 
   //const players = await firestore.doc(`users/${playerID}`).get();
-  const players = await firestore.collection("players")
-  .where("user", "==", playerID).get();
+  let mainDoc;
+  if(group === "Everyone" || group === "Friends"){
+    mainDoc = firestore.doc(`leaderboards/${mode}/dates/${date}`);
+  }
+  else{
+    mainDoc = firestore.doc(`trainingGroups/${group}/leaderboards/${mode}/dates/${date}`);
+  }
+  const players = await mainDoc
+    .collection("players")
+    .where("user", "==", playerID)
+    .get();
   if (players.empty) {
-    throw Error(`Player not found in leaderboard: ${playerID}`);
+    //throw Error(`Player not found in leaderboard: ${playerID}`);
+    return {rank: 0};
   }
   const player = players.docs[0].data();
   const score = player.score;
 
-  const scores = firestore.collection("scores");
+  const scores = mainDoc.collection("scores");
 
   /**
    * Recursively finds a player score in a collection.
@@ -232,10 +249,8 @@ async function readRank(playerID, firestore) {
         if (exact.score === value) {
           if (exact.user === id) {
             // Score found.
-            logger.log("FOUND");
             found = true;
             currentCount++;
-            logger.log(currentCount)
           } else {
             // The player is tied with another. In this case, don't increment
             // the count.
@@ -265,21 +280,21 @@ async function readRank(playerID, firestore) {
           continue;
         } else {
           const subcollection = doc.ref.collection("scores");
-          currentCount=await findPlayerScoreInCollection(
+          currentCount = await findPlayerScoreInCollection(
             id,
             value,
             subcollection,
             currentCount
           );
-          found=true;
+          found = true;
         }
       }
     }
     // There was no range containing the score.
-    if(found){
+    if (found) {
       return currentCount;
     }
-    throw Error(`Range not found for score: ${value}`);
+    return {rank: 0};
   }
 
   const rank = await findPlayerScoreInCollection(playerID, score, scores, 0);
@@ -298,16 +313,25 @@ async function readRank(playerID, firestore) {
  * @return {Promise<admin.firestore.WriteResult | Error>} Returns a promise
  *     that resolves when the write completes.
  */
-async function deleteScore(playerID, firestore) {
+async function deleteScore(playerID, firestore, mode, date, group) {
   //const players = await firestore.doc(`users/${playerID}`).get();
-  const players = await firestore.collection("players")
-  .where("user", "==", playerID).get();
+  let mainDoc;
+  if(group === "Everyone"){
+    mainDoc = firestore.doc(`leaderboards/${mode}/dates/${date}`);
+  }
+  else{
+    mainDoc = firestore.doc(`trainingGroups/${group}/leaderboards/${mode}/dates/${date}`);
+  }
+  const players = await mainDoc
+    .collection("players")
+    .where("user", "==", playerID)
+    .get();
   if (players.empty) {
     throw Error(`Player not found in leaderboard: ${playerID}`);
   }
-  const player = players.data();
+  const player = players.docs[0].data();
   const score = player.score;
-  const scores = firestore.collection("scores");
+  const scores = mainDoc.collection("scores");
 
   /**
    * Recursively finds a player score in a collection.
@@ -371,6 +395,7 @@ async function deleteScore(playerID, firestore) {
                     write(transaction);
                   }
                   transaction.delete(doc.ref);
+                  transaction.delete(players.docs[0].ref)
                 }
               );
               return result;

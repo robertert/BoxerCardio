@@ -1,7 +1,7 @@
-import { View, StyleSheet, Text } from "react-native";
+import { View, StyleSheet, Text, Alert } from "react-native";
 import Colors from "../../constants/colors";
 import { Pressable } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { FontAwesome6, Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FlashList } from "@shopify/flash-list";
 import TrainingGroup from "./TrainingGroups/TrainingGroup";
@@ -12,32 +12,10 @@ import { useContext, useState, useEffect } from "react";
 import { UserContext } from "../../store/user-context";
 import { getDoc, doc } from "firebase/firestore";
 import { ActivityIndicator } from "react-native";
+import { useTranslation } from "react-i18next";
 
 function TrainingGroups() {
-  const DUMMY_TEAMS = [
-    {
-      id: 1,
-      name: "TEAMNAME",
-      photoUrl: "url",
-      rank: 1,
-      members: 10,
-    },
-    {
-      id: 2,
-      name: "TEAMNAME",
-      photoUrl: "url",
-      rank: 3,
-      members: 30,
-    },
-    {
-      id: 3,
-      name: "TEAMNAME",
-      photoUrl: "url",
-      rank: 15,
-      members: 25,
-    },
-  ];
-
+  
   const insets = useSafeAreaInsets();
 
   const navigation = useNavigation();
@@ -46,7 +24,9 @@ function TrainingGroups() {
 
   const [teams, setTeams] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [refresh,setRefresh] = useState(false);
+  const [refresh, setRefresh] = useState(false);
+
+  const {t} = useTranslation();
 
   useEffect(() => {
     fetchTeams();
@@ -59,6 +39,7 @@ function TrainingGroups() {
       setTeams(data.data().trainingGroups);
       setIsLoading(false);
     } catch (e) {
+      Alert.alert("Error",t("Error message"));
       console.log(e);
     }
   }
@@ -71,21 +52,10 @@ function TrainingGroups() {
     navigation.navigate("training-group-form");
   }
 
-  async function testHandler() {
-    try {
-      post("addNewScore", {
-        userId: 1,
-        score: 10,
-      });
-    } catch (e) {
-      console.log("ERROR");
-      console.log(e);
-    }
-  }
 
   function trainingGroupRenderHandler(itemData) {
     const item = itemData.item;
-    console.log(item.membersNum);
+    //console.log(item.membersNum);
     return (
       <TrainingGroup
         name={item.name}
@@ -109,9 +79,9 @@ function TrainingGroups() {
         <Pressable onPress={goBackHandler}>
           <Ionicons name="chevron-back" size={42} color="white" />
         </Pressable>
-        <Text style={styles.headerText}>Your training teams</Text>
+        <Text style={styles.headerText}>{t("Your training teams")}</Text>
         <Pressable onPress={addHandler}>
-          <Ionicons name="ios-add" size={42} color="white" />
+          <FontAwesome6 name="add" size={38} color="white" />
         </Pressable>
       </View>
       <View style={styles.trainingGroupsContainer}>
@@ -122,7 +92,7 @@ function TrainingGroups() {
             keyExtractor={(item) => item.id}
             estimatedItemSize={80}
             refreshing={refresh}
-            onRefresh={()=>{
+            onRefresh={() => {
               setRefresh(true);
               try {
                 setTeams([]);
@@ -161,7 +131,7 @@ const styles = StyleSheet.create({
   },
   headerText: {
     color: Colors.primary100,
-    fontSize: 25,
+    fontSize: 23,
     fontWeight: "600",
   },
   trainingGroupsContainer: {

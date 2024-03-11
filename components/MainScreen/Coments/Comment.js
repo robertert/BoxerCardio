@@ -14,6 +14,7 @@ import { useNavigation } from "@react-navigation/native";
 import { getDownloadURL, ref } from "firebase/storage";
 import { storage } from "../../../firebaseConfig";
 import { doc, getDoc } from "firebase/firestore";
+import { useTranslation } from "react-i18next";
 
 function Comment({
   type,
@@ -38,6 +39,8 @@ function Comment({
   const [type1, setType1] = useState(type);
   const [commentImage, setCommentImage] = useState();
   const [time, setTime] = useState("just now");
+
+  const {t} = useTranslation();
 
   useEffect(() => {
     if (!type) {
@@ -103,43 +106,43 @@ function Comment({
       const creationDate = createDate.toDate();
       const timeDifference =
         (new Date().getTime() - creationDate.getTime()) / 1000;
-      console.log(timeDifference / (60 * 60 ));
       if (timeDifference < 60) {
-        setTime("just now");
+        setTime(t("just now"));
       } else if (timeDifference >= 60 && timeDifference / 60 < 60) {
         const mins = Math.floor(timeDifference / 60);
         if (mins === 1) {
-          setTime(`1 minute ago`);
+          setTime(t(`minute ago`,{postProcess: 'interval', count: 1}));
         } else {
-          setTime(`${mins} minutes ago`);
+          setTime(t(`minute ago`,{postProcess: 'interval', count: mins}));
         }
       } else if (timeDifference / 60 >= 60 && timeDifference / (60 * 60) < 24) {
         const hours = Math.floor(timeDifference / (60 * 60));
         if (hours === 1) {
-          setTime(`1 hour ago`);
+          setTime(t(`hour ago`,{postProcess: 'interval', count: 1}));
         } else {
-          setTime(`${hours} hours ago`);
+          console.log(t(`hour ago`,{postProcess: 'interval', count: hours}));
+          setTime(t(`hour ago`,{postProcess: 'interval', count: hours}));
         }
       } else if (
         timeDifference / (60 * 60) >= 24 &&
         timeDifference / (60 * 60 * 24) < 2
       ) {
-        setTime("yesterday");
+        setTime(t("yesterday"));
       } else if (
         timeDifference / (60 * 60 * 24) >= 2 &&
         timeDifference / (60 * 60 * 24) < 7
       ) {
         const days = Math.floor(timeDifference / (60 * 60 * 24));
-        setTime(`${days} days ago`);
+        setTime(t(`days ago`,{postProcess: 'interval', count: days}));
       } else if (
         timeDifference / (60 * 60 * 24) >= 7 &&
         timeDifference / (60 * 60 * 24) < 30
       ) {
         const weeks = Math.floor(timeDifference / (60 * 60 * 24 * 7));
         if (weeks === 1) {
-          setTime("1 week ago");
+          setTime(t(`week ago`,{postProcess: 'interval', count: 1}));
         } else {
-          setTime(`${weeks} weeks ago`);
+          setTime(t(`week ago`,{postProcess: 'interval', count: weeks}));
         }
       } else if (
         timeDifference / (60 * 60 * 24) >= 30 &&
@@ -147,16 +150,17 @@ function Comment({
       ) {
         const months = Math.floor(timeDifference / (60 * 60 * 24 * 30));
         if (months === 1) {
-          setTime("1 months ago");
+          setTime(t(`month ago`,{postProcess: 'interval', count: 1}))
         } else {
-          setTime(`${months} month ago`);
+          setTime(t(`month ago`,{postProcess: 'interval', count: months}));
         }
       } else {
         const years = Math.floor(timeDifference / (60 * 60 * 24 * 365));
         if (years === 1) {
-          setTime("1 year ago");
+          setTime(t(`year ago`,{postProcess: 'interval', count: 1}));
         } else {
-          setTime(`${years} years ago`);
+          setTime(t(`year ago`,{postProcess: 'interval', count: years}));
+
         }
       }
     }
@@ -210,12 +214,12 @@ function Comment({
               <View style={styles.footer}>
                 {isResponse && !showResponse && (
                   <Pressable onPress={answerShowHandler}>
-                    <Text style={styles.footerText}>Show answers</Text>
+                    <Text style={styles.footerText}>{t("Show answers")}</Text>
                   </Pressable>
                 )}
                 {showReply && (
                   <Pressable onPress={replyHandler}>
-                    <Text style={styles.footerText}>Reply</Text>
+                    <Text style={styles.footerText}>{t("Reply")}</Text>
                   </Pressable>
                 )}
               </View>

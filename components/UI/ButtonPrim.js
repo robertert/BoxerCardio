@@ -23,7 +23,7 @@ const styles = StyleSheet.create({
         opacity: 0.7,
         marginTop: 12,
         height: 50,
-        width: 200,
+      
         backgroundColor: Colors.accent500,
         borderRadius: 20,
     },
@@ -37,6 +37,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   buttonText: {
+    marginHorizontal: 30,
     fontSize: 30,
     fontWeight: "bold",
     color: Colors.primary100,

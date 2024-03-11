@@ -16,33 +16,10 @@ import {
 } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
 import { UserContext } from "../../store/user-context";
+import { useTranslation } from "react-i18next";
 
-const DUMMY_POSTS_DETAILS = [
-  {
-    id: 1,
-    userName: "mankowskae",
-    photoUrl: "url",
-    miniatureUrl: "url",
-    score: 12,
-    mode: "3MIN",
-    createdAt: new Date(),
-    numberOfLikes: 3,
-    numberOfComments: 10,
-  },
-  {
-    id: 2,
-    userName: "ma",
-    photoUrl: "url",
-    miniatureUrl: "url",
-    score: 14,
-    mode: "5MIN",
-    createdAt: new Date(),
-    numberOfLikes: 4,
-    numberOfComments: 11,
-  },
-];
 
-function PostsDisplayDetails() {
+function PostsDisplayDetails({route}) {
   const [isLoading, setIsLoading] = useState(false);
   const [isFirstLoading, setIsFirstLoading] = useState(false);
   const [isError, setIsError] = useState(false);
@@ -55,6 +32,10 @@ function PostsDisplayDetails() {
 
   const navigation = useNavigation();
 
+  const {t} = useTranslation();
+
+  const id = route.params.id;
+
   const userCtx = useContext(UserContext);
   useEffect(() => {
     initialfetchPosts();
@@ -65,7 +46,7 @@ function PostsDisplayDetails() {
     try {
       const posts = await getDocs(
         query(
-          collection(db, `users/${userCtx.id}/posts`),
+          collection(db, `users/${id}/posts`),
           orderBy("createdAt"),
           limit(10)
         )
@@ -140,7 +121,8 @@ function PostsDisplayDetails() {
         likes={item.likes}
         likesNum={item.likesNum}
         commentsNum={item.commentsNum}
-        name={item.name}
+        name={item.userName}
+        userId={item.userId}
         onShare={shareHandler}
         id={item.id}
       />

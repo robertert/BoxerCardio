@@ -30,6 +30,7 @@ import {
 import { db } from "../../../firebaseConfig";
 import { UserContext } from "../../../store/user-context";
 import AddNewMemberFormItem from "./AddNewMemberFormItem";
+import { useTranslation } from "react-i18next";
 
 function AddNewMemberForm({ route }) {
   const insets = useSafeAreaInsets();
@@ -38,8 +39,10 @@ function AddNewMemberForm({ route }) {
 
   const teamId = route.params.teamId;
   const teamName = route.params.teamName;
+  const teamShort = route.params.teamShort;
 
   const userCtx = useContext(UserContext);
+  const {t,i18n} = useTranslation()
 
   const [results, setResults] = useState([]);
   const [search, setSearch] = useState("");
@@ -74,7 +77,7 @@ function AddNewMemberForm({ route }) {
       setIsLoading(false);
     } catch (e) {
       console.log(e);
-      Alert.alert("Error", "There was an error!");
+      Alert.alert("Error", t("Error message"));
     }
   }
 
@@ -100,6 +103,7 @@ function AddNewMemberForm({ route }) {
         setResults={setResults}
         teamId={teamId}
         teamName={teamName}
+        teamShort={teamShort}
         viewProfile={viewProfileHandler}
       />
     );

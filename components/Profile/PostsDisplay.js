@@ -2,44 +2,40 @@ import { View, StyleSheet, Pressable, ScrollView } from "react-native";
 import Colors from "../../constants/colors";
 import { FlashList } from "@shopify/flash-list";
 import PostDisplay from "./PostDisplay";
+import { doc, getDoc, getDocs } from "firebase/firestore";
+import { db } from "../../firebaseConfig";
+import { useContext, useEffect, useState } from "react";
+import { UserContext } from "../../store/user-context";
 
-const DUMMY_POSTS = [
-  {
-    id: 1,
-    miniatureUrl: "url",
-    score: 12,
-    mode: "3MIN",
-    createdAt: new Date(),
-  },
-  {
-    id: 2,
-    miniatureUrl: "url",
-    score: "1:25",
-    mode: "100PUNCH",
-    createdAt: new Date(),
-  },
-  {
-    id: 3,
-    miniatureUrl: "url",
-    score: 114,
-    mode: "FREESTYLE",
-    createdAt: new Date(),
-  },
-];
 
-function PostsDisplay() {
+function PostsDisplay({userId}) {
 
-    function renderPostHandler(itemData){
-        const item = itemData.item;
-        return <PostDisplay id={item.id}/>
-    }
+  const [posts,setPosts] = useState([]);
+
+  const userCtx = useContext(UserContext);
+
+  async function fetchPosts() {
+    const data = await getDoc(doc(db, `users/${userId}`));
+    const postsPreview = data.data().postsPreview;
+    setPosts(postsPreview);
+  }
+
+  useEffect(()=>{
+    fetchPosts();
+  },[])
+
+  function renderPostHandler(itemData) {
+    console.log(item);
+    const item = itemData.item;
+    return <PostDisplay id={item} userId={userId} />;
+  }
 
   return (
     <View style={styles.root}>
       <FlashList
-        data={DUMMY_POSTS}
+        data={posts}
         renderItem={renderPostHandler}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item}
         estimatedItemSize={100}
       />
     </View>

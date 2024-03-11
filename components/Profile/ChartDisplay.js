@@ -1,6 +1,6 @@
 import { View, StyleSheet, Text, ActivityIndicator } from "react-native";
 import { Dimensions } from "react-native";
-import Colors from "../../constants/colors";
+import Colors, { timeModes } from "../../constants/colors";
 import { LineChart } from "react-native-chart-kit";
 import { Pressable } from "react-native";
 import { useNavigation } from "@react-navigation/native";
@@ -9,6 +9,7 @@ import { collection, doc, getDoc, getDocs } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
 import { UserContext } from "../../store/user-context";
 import GestureRecognizer from "react-native-swipe-gestures";
+import { useTranslation } from "react-i18next";
 
 const DUMMY_MONTHS = [
   "January",
@@ -24,6 +25,20 @@ const DUMMY_MONTHS = [
   "November",
   "December",
 ];
+const DUMMY_MONTHS_SHORT = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 const DUMMY_WEEKDAYS = [
   "Mon.",
   "Tues.",
@@ -38,12 +53,16 @@ function ChartDisplay({ route }) {
   const [chartData, setChartData] = useState([1, 2]);
   const [isLoading, setIsLoading] = useState(true);
   const [labels, setLabels] = useState(["test", "YEst"]);
+  const [propsDisplay, setPropsDisplay] = useState({});
+  const [ySuffix,setYSuffix]  = useState("");
 
   const navigation = useNavigation();
 
   const date = new Date();
 
   const id = route.params.id;
+
+  const {t} = useTranslation();
 
   useEffect(() => {
     fetchAllData();
@@ -52,6 +71,7 @@ function ChartDisplay({ route }) {
   async function fetchAllData() {
     setIsLoading(true);
     const props = await fetchChartProps();
+    setPropsDisplay(props);
     await fetchLabels(props);
     await changeData(props);
     setIsLoading(false);
@@ -69,11 +89,11 @@ function ChartDisplay({ route }) {
           } else {
             add = 0;
           }
-          return [...prev, DUMMY_MONTHS[month - i + add]];
+          return [...prev, t(DUMMY_MONTHS_SHORT[month - i + add])];
         });
       }
     }
-    if (chartProps.timeRange === "Last year") {
+    if (chartProps.timeRange === "This year") {
       const month = date.getMonth();
       let add;
       for (let i = 11; i >= 0; i -= 2) {
@@ -83,7 +103,7 @@ function ChartDisplay({ route }) {
           } else {
             add = 0;
           }
-          return [...prev, DUMMY_MONTHS[month - i + add]];
+          return [...prev, t(DUMMY_MONTHS_SHORT[month - i + add])];
         });
       }
     }
@@ -103,11 +123,11 @@ function ChartDisplay({ route }) {
           } else {
             add = 0;
           }
-          return [...prev, DUMMY_MONTHS[month - i + add]];
+          return [...prev, t(DUMMY_MONTHS[month - i + add])];
         });
       }
     }
-    if (chartProps.timeRange === "Last 30 days") {
+    if (chartProps.timeRange === "30 days") {
       const day = date.getDate();
       let add;
       for (let i = 30; i >= 0; i -= 6) {
@@ -121,7 +141,7 @@ function ChartDisplay({ route }) {
         });
       }
     }
-    if (chartProps.timeRange === "Last week") {
+    if (chartProps.timeRange === "This week") {
       const day = date.getDay();
       let add;
       for (let i = 6; i >= 0; i--) {
@@ -131,7 +151,7 @@ function ChartDisplay({ route }) {
           } else {
             add = 0;
           }
-          return [...prev, DUMMY_WEEKDAYS[day - i + add]];
+          return [...prev, t(DUMMY_WEEKDAYS[day - i + add])];
         });
       }
     }
@@ -172,7 +192,7 @@ function ChartDisplay({ route }) {
       setIsLoading(false);
     }
 
-    if (chartProps.timeRange === "Last year") {
+    if (chartProps.timeRange === "This year") {
       const month = date.getMonth();
       let add;
       let year;
@@ -244,7 +264,7 @@ function ChartDisplay({ route }) {
       });
       setIsLoading(false);
     }
-    if (chartProps.timeRange === "Last 30 days") {
+    if (chartProps.timeRange === "30 days") {
       const day = date.getDate();
       let add;
       let month;
@@ -276,7 +296,7 @@ function ChartDisplay({ route }) {
       });
       setIsLoading(false);
     }
-    if (chartProps.timeRange === "Last week") {
+    if (chartProps.timeRange === "This week") {
       const day = date.getDate();
       let add;
       let month;
@@ -317,15 +337,14 @@ function ChartDisplay({ route }) {
     } else if (type === "Year") {
       path = `users/${id}/stats/${year}`;
     } else if (type === "Month") {
-      path = `users/${id}/stats/${year}.${month}`;
+      path = `users/${id}/stats/${year}:${month}`;
     } else if (type === "Day") {
-      path = `users/${id}/stats/${year}.${month}.${day}`;
+      path = `users/${id}/stats/${year}:${month}:${day}`;
     }
     try {
       //console.log(path);
       const data = await getDoc(doc(db, path));
       const data1 = data?.data();
-
       if (data1 !== undefined) {
         if (data1.hasOwnProperty(mode)) {
           if (data1[mode].hasOwnProperty(scoreType)) {
@@ -361,6 +380,56 @@ function ChartDisplay({ route }) {
       console.log(e);
     }
   }
+  function formatYAxis(score) {
+    let scr = score;
+    if (timeModes.filter((tMode) => tMode === propsDisplay.mode).length > 0) {
+      setYSuffix("");
+      if (score > 3600) {
+        const hours = Math.floor(score / 3600);
+        let min, sec;
+        if (Math.floor((score % 3600) / 60) === 0) {
+          min = "00";
+        } else if (Math.floor((score % 3600) / 60) < 10) {
+          min = `0${Math.floor((score % 3600) / 60)}`;
+        } else {
+          min = Math.floor((score % 3600) / 60);
+        }
+        if (score % 60 === 0) {
+          sec = "00";
+        } else if (score % 60 < 10) {
+          sec = `0${score % 60}`;
+        } else {
+          sec = score % 60;
+        }
+        scr = `${hours}:${min}:${sec}`;
+      } else if (score > 60) {
+        let min, sec;
+        if (Math.floor((score % 3600) / 60) === 0) {
+          min = "00";
+        } else {
+          min = Math.floor((score % 3600) / 60);
+        }
+        if (score % 60 === 0) {
+          sec = "00";
+        } else if (score % 60 < 10) {
+          sec = `0${score % 60}`;
+        } else {
+          sec = score % 60;
+        }
+        scr = `${min}:${sec}`;
+      } else if (score > 0) {
+        scr = `00:${score}`;
+      }
+      if(score == 0){
+        scr = "0:00";
+      }
+    }
+    else{
+      setYSuffix("p.");
+    }
+    return scr;
+  }
+
 
   function moreHandler() {
     navigation.navigate("chart-display-details", { id: id });
@@ -370,43 +439,49 @@ function ChartDisplay({ route }) {
     <View style={styles.root}>
       <GestureRecognizer onSwipeDown={fetchAllData}>
         {!isLoading ? (
-          <LineChart
-            data={{
-              labels: [...labels],
-              datasets: [
-                {
-                  data: chartData,
+          <>
+            <Text
+              style={styles.topText}
+            >{`${propsDisplay.mode}   ${t(propsDisplay.scoreType)}   ${t(propsDisplay.timeRange)}`}</Text>
+            <LineChart
+              data={{
+                labels: [...labels],
+                datasets: [
+                  {
+                    data: chartData,
+                  },
+                ],
+              }}
+              width={Dimensions.get("window").width - 30} // from react-native
+              height={240}
+              yAxisLabel=""
+              yAxisSuffix={ySuffix}
+              formatYLabel={formatYAxis}
+              yAxisInterval={1} // optional, defaults to 1
+              chartConfig={{
+                backgroundGradientFrom: Colors.accent300,
+                backgroundGradientTo: Colors.accent500,
+                decimalPlaces: 2, // optional, defaults to 2dp
+                color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+                labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+                style: {
+                  borderRadius: 16,
                 },
-              ],
-            }}
-            width={Dimensions.get("window").width - 30} // from react-native
-            height={240}
-            yAxisLabel=""
-            yAxisSuffix="p."
-            yAxisInterval={1} // optional, defaults to 1
-            chartConfig={{
-              backgroundGradientFrom: Colors.accent300,
-              backgroundGradientTo: Colors.accent500,
-              decimalPlaces: 2, // optional, defaults to 2dp
-              color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-              labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-              style: {
+                propsForDots: {
+                  r: "6",
+                  strokeWidth: "2",
+                  stroke: Colors.accent700,
+                },
+              }}
+              bezier
+              style={{
+                marginTop: 20,
+                marginBottom: 40,
+                marginVertical: 8,
                 borderRadius: 16,
-              },
-              propsForDots: {
-                r: "6",
-                strokeWidth: "2",
-                stroke: Colors.accent700,
-              },
-            }}
-            bezier
-            style={{
-              marginTop: 20,
-              marginBottom: 40,
-              marginVertical: 8,
-              borderRadius: 16,
-            }}
-          />
+              }}
+            />
+          </>
         ) : (
           <ActivityIndicator
             size={"large"}
@@ -415,7 +490,7 @@ function ChartDisplay({ route }) {
           />
         )}
         <Pressable onPress={moreHandler}>
-          <Text style={styles.moreText}>Press for more details</Text>
+          <Text style={styles.moreText}>{t("Press for more details")}</Text>
         </Pressable>
       </GestureRecognizer>
     </View>
@@ -436,5 +511,12 @@ const styles = StyleSheet.create({
     fontSize: 25,
     fontWeight: "700",
     color: Colors.primary100,
+  },
+  topText: {
+    textAlign: "center",
+    fontSize: 20,
+    fontWeight: "700",
+    color: Colors.primary100,
+    opacity: 0.8
   },
 });

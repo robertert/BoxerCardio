@@ -1,7 +1,10 @@
 import { ActivityIndicator, Pressable } from "react-native";
 import { Text, View, Image, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Colors, { DUMMY_LEADERBOARD } from "../../../constants/colors";
+import Colors, {
+  DUMMY_LEADERBOARD,
+  timeModes,
+} from "../../../constants/colors";
 import { useContext, useEffect, useState } from "react";
 import { Ionicons, Entypo } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -20,42 +23,41 @@ import LeaderboardItem from "../LeaderboardItem";
 import { Dialog } from "@rneui/themed";
 import {
   arrayRemove,
+  collection,
   doc,
   getDoc,
+  getDocs,
+  limit,
+  orderBy,
+  query,
   runTransaction,
+  startAfter,
   writeBatch,
 } from "firebase/firestore";
 import { db } from "../../../firebaseConfig";
 import { UserContext } from "../../../store/user-context";
 import { SettingsContext } from "../../../store/settings-context";
+import { useTranslation } from "react-i18next";
 
 const { Popover } = renderers;
 
-const DUMMY_TEAM = {
-  id: 2141235123,
-  tag: "BOBO",
-  name: "bobobo",
-  photoUrl: "URL",
-  members: [
-    {
-      id: 1,
-      name: "Robert",
-      photoUrl: "url",
-    },
-  ],
-};
-
-function AddNewMember() {
+function AddNewMember(team) {
   const navigation = useNavigation();
 
+  const { t } = useTranslation();
+
   function addHandler() {
-    navigation.navigate("add-new-member-form", { teamId: DUMMY_TEAM.id });
+    navigation.navigate("add-new-member-form", {
+      teamId: team.id,
+      teamName: team.name,
+      teamShort: team.tag,
+    });
   }
   return (
     <Pressable onPress={addHandler}>
       <View style={styles.footerContainer}>
         <AntDesign name="plus" size={30} color="white" />
-        <Text style={styles.footerText}>Add new member</Text>
+        <Text style={styles.footerText}>{t("Add new member")}</Text>
       </View>
     </Pressable>
   );
@@ -77,9 +79,23 @@ function TrainingGroupDetails({ route }) {
   const [isVisible, setIsVisible] = useState(false);
 
   const [team, setTeam] = useState({});
+  const [leaderboard, setLeaderboard] = useState([]);
+
+  const [lastDoc, setLastDoc] = useState();
+  const [multiplayer, setMultiplayer] = useState(0);
+  const [isFirstLoading, setIsFirstLoading] = useState(false);
+  const [isFirstLoadingRank, setIsFirstLoadingRank] = useState(false);
+  const [isError, setIsError] = useState(false);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [refresh, setRefresh] = useState(false);
+  const [isEmpty, setIsEmpty] = useState(false);
 
   const userCtx = useContext(UserContext);
   const settingsCtx = useContext(SettingsContext);
+
+  let order;
+
+  const { t } = useTranslation();
 
   useEffect(() => {
     fetchDetails();
@@ -92,17 +108,119 @@ function TrainingGroupDetails({ route }) {
       }, 5000);
   }, [isVisible]);
 
+  async function getInitialLeaderboard() {
+    let date;
+    if (timeRange === "Year") {
+      const fullDate = new Date();
+      date = fullDate.getFullYear();
+    }
+    try {
+      setIsFirstLoadingRank(true);
+      setMultiplayer(0);
+      const data = await getDocs(
+        query(
+          collection(
+            db,
+            `trainingGroups/${id}/leaderboards/${mode}/dates/${date}/players`
+          ),
+          orderBy("score", order),
+          limit(10)
+        )
+      );
+      setLastDoc(data.docs[data.docs.length - 1]);
+      if (data.docs.length === 10) {
+        setHasNextPage(true);
+      } else {
+        setHasNextPage(false);
+      }
+      if (data.docs.length === 0) {
+        setIsEmpty(true);
+      } else {
+        setIsEmpty(false);
+      }
+      //data.forEach((doc) => console.log(doc.data()));
+      let licznik = 1;
+      setLeaderboard(
+        data.docs.map((doc) => {
+          doc = { ...doc.data(), rank: licznik };
+          licznik++;
+          return doc;
+        })
+      );
+      setMultiplayer((prev) => prev + 1);
+      setIsFirstLoadingRank(false);
+    } catch (e) {
+      setIsError(true);
+    }
+  }
+
+  async function loadNextPage() {
+    if (hasNextPage) {
+      let date;
+      if (timeRange === "Year") {
+        const fullDate = new Date();
+        date = fullDate.getFullYear();
+      }
+      try {
+        setIsLoading(true);
+        const data = await getDocs(
+          query(
+            collection(
+              db,
+              `trainingGroups/${id}/leaderboards/${mode}/dates/${date}/players`
+            ),
+            orderBy("score", order),
+            limit(10),
+            startAfter(lastDoc)
+          )
+        );
+
+        setLastDoc(data.docs[data.docs.length - 1]);
+
+        if (data.docs.length === 10) {
+          setHasNextPage(true);
+        } else {
+          setHasNextPage(false);
+        }
+        //data.forEach((doc) => console.log(doc.data()));
+        let licznik = 1 + multiplayer * 10;
+        const newLeaderboard = data.docs.map((doc) => {
+          doc = { ...doc.data(), rank: licznik };
+          licznik++;
+          return doc;
+        });
+        setLeaderboard((prev) => [...prev, ...newLeaderboard]);
+        setMultiplayer((prev) => prev + 1);
+        setIsLoading(false);
+      } catch (e) {
+        setIsError(true);
+      }
+    }
+  }
+
+  useEffect(() => {
+    getInitialLeaderboard();
+    if (timeModes.filter((timeMode) => timeMode === mode)) {
+      order = "asc";
+    } else {
+      order = "desc";
+    }
+  }, [timeRange, mode]);
+
   async function fetchDetails() {
-    setIsLoading(true);
+    setIsFirstLoading(true);
+    const userData = await getDoc(doc(db, `users/${userCtx.id}`));
+    settingsCtx.getPermissions(userData.data().permissions);
+    const permissions = userData.data().permissions;
     const data = await getDoc(doc(db, `trainingGroups/${id}`));
     setTeam({ id: data.id, ...data.data() });
     setIsAllowedInvitations(data.data().settings.isAllowedMembersInvitations);
     setIsOwner(
-      settingsCtx.permissions.filter(
-        (perm) => perm.id === data.id && perm.type === "owner"
-      ).length > 0
+      permissions.filter((perm) => perm.id === data.id && perm.type === "owner")
+        .length > 0
     );
-    setIsLoading(false);
+    console.log(settingsCtx.permissions);
+    setIsFirstLoading(false);
   }
 
   function toggleIsVisible() {
@@ -115,12 +233,17 @@ function TrainingGroupDetails({ route }) {
 
   function renderLeaderboardHandler(itemData) {
     const item = itemData.item;
+    let type = "NUM";
+    if (timeModes.filter((timeMode) => timeMode === mode)) {
+      type = "TIME";
+    }
     return (
       <LeaderboardItem
         rank={item.rank}
         name={item.name}
         score={item.score}
-        userId={item.id}
+        userId={item.user}
+        type={type}
       />
     );
   }
@@ -140,6 +263,7 @@ function TrainingGroupDetails({ route }) {
     navigation.navigate("add-new-member-form", {
       teamId: team.id,
       teamName: team.name,
+      teamShort: team.tag,
     });
   }
 
@@ -194,7 +318,7 @@ function TrainingGroupDetails({ route }) {
         });
       }
       // SPRAWDZIC CZY DZIAŁA WYCHODZENIE Z TEAMU I USUWANIE Z TEAMU
-      
+
       transaction.update(doc(db, `users/${userCtx.id}`), {
         trainingGroups: readyTrainingGroups,
         permissions: readyPermissions,
@@ -202,7 +326,6 @@ function TrainingGroupDetails({ route }) {
       navigation.goBack();
     });
   }
-
   return (
     <View
       style={[
@@ -225,30 +348,35 @@ function TrainingGroupDetails({ route }) {
               optionsWrapper: styles.infoWraper,
             }}
           >
-            <MenuOption onSelect={membersListHandler} text="Members list" />
+            <MenuOption
+              onSelect={membersListHandler}
+              text={t("Members list")}
+            />
             <Divider />
             {isOwner && (
               <>
-                <MenuOption onSelect={settingsSelectHandler} text="Settings" />
-                <Divider />
-              </>
-            )}
-            <MenuOption onSelect={shareSelectHandler} text="Share" />
-            <Divider />
-            {(isAllowedInvitations || isOwner) && (
-              <>
                 <MenuOption
-                  onSelect={addNewMemberSelectHandler}
-                  text="Add new member"
+                  onSelect={settingsSelectHandler}
+                  text={t("Settings")}
                 />
                 <Divider />
               </>
             )}
-            <MenuOption onSelect={statsSelectHandler} text="Stats" />
+            <MenuOption onSelect={shareSelectHandler} text={t("Share")} />
+            <Divider />
+            {(isAllowedInvitations || isOwner) && (
+              <>
+                <MenuOption
+                  onSelect={addNewMemberSelectHandler.bind(this, team)}
+                  text={t("Add new member")}
+                />
+                <Divider />
+              </>
+            )}
             <Divider />
             <MenuOption
               onSelect={quitSelectHandler}
-              text="Quit this training team"
+              text={t("Quit this training team")}
               customStyles={{
                 optionText: {
                   color: Colors.accent500,
@@ -261,7 +389,7 @@ function TrainingGroupDetails({ route }) {
         </Menu>
       </View>
 
-      {isLoading ? (
+      {isFirstLoading ? (
         <View style={{ alignItems: "center", justifyContent: "center" }}>
           <ActivityIndicator size={"large"} color={Colors.accent500} />
         </View>
@@ -309,7 +437,7 @@ function TrainingGroupDetails({ route }) {
                     />
                     <Divider />
                     <MenuOption
-                      onSelect={() => setMode("100 P")}
+                      onSelect={() => setMode("100P")}
                       text="100 PUNCH"
                     />
                     <Divider />
@@ -346,7 +474,7 @@ function TrainingGroupDetails({ route }) {
               >
                 <MenuTrigger>
                   <View style={styles.innerPickerContainer}>
-                    <Text style={styles.pickerText}>{timeRange}</Text>
+                    <Text style={styles.pickerText}>{t(timeRange)}</Text>
                     <AntDesign name="down" size={10} color="white" />
                   </View>
                 </MenuTrigger>
@@ -358,31 +486,78 @@ function TrainingGroupDetails({ route }) {
                   }}
                 >
                   <MenuOption
-                    onSelect={() => setTimeRange("Month")}
-                    text="This month"
+                    onSelect={() => setTimeRange("Year")}
+                    text={t("This year")}
                   />
                   <Divider />
                   <MenuOption
-                    onSelect={() => setTimeRange("Week")}
-                    text="This week"
+                    onSelect={() => setTimeRange("Month")}
+                    text={t("This month")}
                   />
                   <Divider />
                   <MenuOption
                     onSelect={() => setTimeRange("Today")}
-                    text="Today"
+                    text={t("Today")}
                   />
                 </MenuOptions>
               </Menu>
             </View>
           </View>
           <View style={styles.leaderboardContainer}>
-            <FlashList
-              data={DUMMY_LEADERBOARD}
-              renderItem={renderLeaderboardHandler}
-              keyExtractor={(item) => item.rank}
-              estimatedItemSize={50}
-              ListFooterComponent={AddNewMember}
-            />
+            {isFirstLoadingRank ? (
+              <ActivityIndicator
+                size="large"
+                color={Colors.accent500}
+                style={styles.loading}
+              />
+            ) : (
+              <FlashList
+                data={leaderboard}
+                renderItem={renderLeaderboardHandler}
+                keyExtractor={(item) => item.rank}
+                estimatedItemSize={50}
+                onEndReachedThreshold={0.8}
+                onEndReached={loadNextPage}
+                refreshing={refresh}
+                onRefresh={async () => {
+                  try {
+                    setIsError(false);
+                    setRefresh(true);
+                    setLeaderboard([]);
+                    getInitialLeaderboard();
+                    setRefresh(false);
+                  } catch (e) {
+                    console.log(e);
+                    setIsError(true);
+                  }
+                }}
+                ListEmptyComponent={
+                  <Text style={styles.errorText}>
+                    {t("This leaderboard is empty")}
+                  </Text>
+                }
+                ListFooterComponent={
+                  !isError ? (
+                    isLoading ? (
+                      <ActivityIndicator
+                        size="large"
+                        color={Colors.accent500}
+                        style={styles.loading}
+                      />
+                    ) : (
+                      !isEmpty && AddNewMember.bind(this, team)
+                    )
+                  ) : (
+                    <View style={styles.footerContainer2}>
+                      <Text style={styles.footerTextTitle}>Error</Text>
+                      <Text style={styles.footerText2}>
+                        {t("Error message")}
+                      </Text>
+                    </View>
+                  )
+                }
+              />
+            )}
           </View>
           <Dialog
             isVisible={isDialogVisible}
@@ -391,15 +566,14 @@ function TrainingGroupDetails({ route }) {
           >
             <Dialog.Title title="Warning" titleStyle={styles.dialogTitle} />
             <Text style={styles.dialogText}>
-              {" "}
-              Are you sure you want to quit this training team?
+              {t("Are you sure you want to quit this training team?")}
             </Text>
             <Dialog.Actions>
               <Pressable onPress={quitTrainingGroupHandler}>
-                <Text style={styles.dialogOptionRed}>Yes I'm sure</Text>
+                <Text style={styles.dialogOptionRed}>{t("Yes I'm sure")}</Text>
               </Pressable>
               <Pressable onPress={toggleIsVisible}>
-                <Text style={styles.dialogOption}>Cancel</Text>
+                <Text style={styles.dialogOption}>{t("Cancel")}</Text>
               </Pressable>
             </Dialog.Actions>
           </Dialog>
@@ -413,9 +587,9 @@ function TrainingGroupDetails({ route }) {
               titleStyle={[styles.dialogTitle, { textAlign: "center" }]}
             />
             <Text style={[styles.dialogText, { textAlign: "center" }]}>
-              {" "}
-              You can't quit this training group because you are an owner.
-              Before you quit you neet to give someone else leadership.
+              {t(
+                "You can't quit this training group because you are an owner. Before you quit you need to give someone else leadership."
+              )}
             </Text>
           </Dialog>
         </>
@@ -531,6 +705,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   footerContainer: {
+    justifyContent: "center",
     height: 50,
     flexDirection: "row",
     marginHorizontal: 20,
@@ -566,5 +741,35 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: Colors.accent500,
     fontWeight: "700",
+  },
+  errorText: {
+    marginVertical: 20,
+    textAlign: "center",
+    color: Colors.primary100,
+    fontSize: 25,
+    marginTop: "50%",
+  },
+  footerContainer2: {
+    height: 200,
+    width: "100%",
+    flexDirection: "column",
+    padding: 25,
+    marginTop: "5%",
+  },
+  footerText2: {
+    color: Colors.primary100,
+    fontSize: 20,
+    fontWeight: "400",
+    textAlign: "center",
+    marginHorizontal: "10%",
+  },
+  footerTextTitle: {
+    color: Colors.primary100,
+    fontSize: 25,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  loading: {
+    marginTop: 30,
   },
 });

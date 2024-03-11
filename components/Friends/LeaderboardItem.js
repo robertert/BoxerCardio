@@ -7,11 +7,53 @@ import { getDownloadURL, ref } from "firebase/storage";
 import { storage } from "../../firebaseConfig";
 import { useState } from "react";
 
-function LeaderboardItem({ userId, name, score, photoUrl, rank }) {
+function LeaderboardItem({ userId, name, score, photoUrl, rank, type }) {
   const navigation = useNavigation();
-  const [image,setImage] = useState();
+  const [image, setImage] = useState();
+  const [scr, setScr] = useState(score);
 
-  useEffect(()=>{
+  function fetchScr() {
+    if (type === "TIME") {
+      if (score > 3600) {
+        const hours = Math.floor(score / 3600);
+        let min, sec;
+        if (Math.floor((score % 3600) / 60) === 0) {
+          min = "00";
+        } else if (Math.floor((score % 3600) / 60) < 10) {
+          min = `0${Math.floor((score % 3600) / 60)}`;
+        } else {
+          min = Math.floor((score % 3600) / 60);
+        }
+        if (score % 60 === 0) {
+          sec = "00";
+        } else if (score % 60 < 10) {
+          sec = `0${score % 60}`;
+        } else {
+          sec = score % 60;
+        }
+        setScr(`${hours}:${min}:${sec}`);
+      } else if (score > 60) {
+        let min, sec;
+        if (Math.floor((score % 3600) / 60) === 0) {
+          min = "00";
+        } else {
+          min = Math.floor((score % 3600) / 60);
+        }
+        if (score % 60 === 0) {
+          sec = "00";
+        } else if (score % 60 < 10) {
+          sec = `0${score % 60}`;
+        } else {
+          sec = score % 60;
+        }
+        setScr(`${min}:${sec}`);
+      } else if (score > 0) {
+        setScr(`00:${score}`);
+      }
+    }
+  }
+
+  useEffect(() => {
     async function fetchPhoto() {
       try {
         const url = await getDownloadURL(
@@ -34,7 +76,8 @@ function LeaderboardItem({ userId, name, score, photoUrl, rank }) {
       }
     }
     fetchPhoto();
-  },[])
+    fetchScr();
+  }, []);
 
   function viewProfileHandler() {
     navigation.navigate("friend-profile", { id: userId });
@@ -43,16 +86,19 @@ function LeaderboardItem({ userId, name, score, photoUrl, rank }) {
   return (
     <View style={styles.root}>
       <View style={styles.rankContainer}>
-        <Text style={styles.text}>{rank}.</Text>
+        <Text style={styles.text}>
+          {rank}
+          {!isNaN(rank) && "."}
+        </Text>
       </View>
       <Pressable onPress={viewProfileHandler}>
         <View style={styles.userContainer}>
-          <Image style={styles.img} source={{uri: image}} />
+          <Image style={styles.img} source={{ uri: image }} />
           <Text style={styles.text}>{name}</Text>
         </View>
       </Pressable>
       <View style={styles.scoreContainer}>
-        <Text style={styles.text}>{score}</Text>
+        <Text style={styles.text}>{scr}</Text>
       </View>
     </View>
   );

@@ -1,4 +1,4 @@
-import { View, StyleSheet, Text, Image, Pressable } from "react-native";
+import { View, StyleSheet, Text, Image, Pressable, Alert } from "react-native";
 import Colors from "../../constants/colors";
 import { Entypo } from "@expo/vector-icons";
 import { useContext, useState } from "react";
@@ -20,11 +20,13 @@ import {
   arrayUnion,
   arrayRemove,
   getDoc,
+  runTransaction,
 } from "firebase/firestore";
 import { UserContext } from "../../store/user-context";
 import { useEffect } from "react";
 import Divider from "../UI/Divider";
 import { getDownloadURL, ref } from "firebase/storage";
+import { useTranslation } from "react-i18next";
 
 function Post({
   name,
@@ -47,9 +49,45 @@ function Post({
   const [isVisibleMore, setIsVisibleMore] = useState(false);
   const [showDesc, setShowDesc] = useState(true);
   const [time, setTime] = useState("");
+  const [isRemove,setIsRemove] = useState(false);
 
   const userCtx = useContext(UserContext);
   const navigation = useNavigation();
+
+  const { t } = useTranslation();
+
+  async function fetchIsRemove(){
+    const data = await getDoc(doc(db,`users/${userCtx.id}`));
+    if(data.data().friends.filter((friend)=>friend.id === userId).length!=0){
+      setIsRemove(true);
+    }
+  }
+
+  async function removeFriendHandler() {
+    try {
+      await runTransaction(db, async (transaction) => {
+        const data = await transaction.get(doc(db, `users/${userCtx.id}`));
+        const data1 = await transaction.get(doc(db, `users/${userId}`));
+
+        const friends = data
+          .data()
+          .friends.filter((friend) => friend.id !== userId);
+        const friends1 = data1
+          .data()
+          .friends.filter((friend) => friend.id !== userCtx.id);
+
+        transaction.update(doc(db, `users/${userCtx.id}`), {
+          friends: friends,
+        });
+        transaction.update(doc(db, `users/${userId}`), {
+          friends: friends1,
+        });
+      });
+    } catch (e) {
+      Alert.alert("Error", t("Error message"));
+      console.log(e);
+    }
+  }
 
   useEffect(() => {
     async function fetchFooter() {
@@ -106,46 +144,49 @@ function Post({
       }
     }
     function fetchTime() {
-      console.log(createDate);
       const creationDate = createDate?.toDate();
       const timeDifference =
         (new Date().getTime() - creationDate?.getTime()) / 1000;
+      if (isNaN(timeDifference)) {
+        setTime("");
+        return;
+      }
       if (timeDifference < 60) {
-        setTime("just now");
+        setTime(t("just now"));
       } else if (timeDifference >= 60 && timeDifference / 60 < 60) {
         const mins = Math.floor(timeDifference / 60);
         if (mins === 1) {
-          setTime(`1 minute ago`);
+          setTime(t(`minute ago`, { postProcess: "interval", count: 1 }));
         } else {
-          setTime(`${mins} minutes ago`);
+          setTime(t(`minute ago`, { postProcess: "interval", count: mins }));
         }
       } else if (timeDifference / 60 >= 60 && timeDifference / (60 * 60) < 24) {
         const hours = Math.floor(timeDifference / (60 * 60));
         if (hours === 1) {
-          setTime(`1 hour ago`);
+          setTime(t(`hour ago`, { postProcess: "interval", count: 1 }));
         } else {
-          setTime(`${hours} hours ago`);
+          setTime(t(`hour ago`, { postProcess: "interval", count: hours }));
         }
       } else if (
         timeDifference / (60 * 60) >= 24 &&
         timeDifference / (60 * 60 * 24) < 2
       ) {
-        setTime("yesterday");
+        setTime(t("yesterday"));
       } else if (
         timeDifference / (60 * 60 * 24) >= 2 &&
         timeDifference / (60 * 60 * 24) < 7
       ) {
         const days = Math.floor(timeDifference / (60 * 60 * 24));
-        setTime(`${days} days ago`);
+        setTime(t(`days ago`, { postProcess: "interval", count: days }));
       } else if (
         timeDifference / (60 * 60 * 24) >= 7 &&
         timeDifference / (60 * 60 * 24) < 30
       ) {
         const weeks = Math.floor(timeDifference / (60 * 60 * 24 * 7));
         if (weeks === 1) {
-          setTime("1 week ago");
+          setTime(t(`week ago`, { postProcess: "interval", count: 1 }));
         } else {
-          setTime(`${weeks} weeks ago`);
+          setTime(t(`week ago`, { postProcess: "interval", count: weeks }));
         }
       } else if (
         timeDifference / (60 * 60 * 24) >= 30 &&
@@ -153,16 +194,16 @@ function Post({
       ) {
         const months = Math.floor(timeDifference / (60 * 60 * 24 * 30));
         if (months === 1) {
-          setTime("1 months ago");
+          setTime(t(`month ago`, { postProcess: "interval", count: 1 }));
         } else {
-          setTime(`${months} month ago`);
+          setTime(t(`month ago`, { postProcess: "interval", count: months }));
         }
       } else {
         const years = Math.floor(timeDifference / (60 * 60 * 24 * 365));
         if (years === 1) {
-          setTime("1 year ago");
+          setTime(t(`year ago`, { postProcess: "interval", count: 1 }));
         } else {
-          setTime(`${years} years ago`);
+          setTime(t(`year ago`, { postProcess: "interval", count: years }));
         }
       }
     }
@@ -170,10 +211,13 @@ function Post({
     fetchPostImage();
     fetchPhoto();
     fetchFooter();
+    fetchIsRemove();
   }, []);
 
   function viewProfileHandler() {
-    navigation.getParent().navigate("friend-profile", { id: userId });
+    if (navigation.getParent()) {
+      navigation.getParent().navigate("friend-profile", { id: userId });
+    }
   }
 
   async function likeHandler() {
@@ -201,7 +245,11 @@ function Post({
     setIsLiked((prev) => !prev);
   }
   function commentHandler() {
-    navigation.getParent().navigate("comment", { id: id, userId: userId });
+    if (!navigation.getParent()) {
+      navigation.navigate("comment", { id: id, userId: userId });
+    } else {
+      navigation.getParent().navigate("comment", { id: id, userId: userId });
+    }
   }
 
   function shareHandler() {
@@ -209,12 +257,12 @@ function Post({
   }
 
   function showMoreHandler() {
-    if (showMore === "Show more") {
+    if (showMore === t("Show more")) {
       setDesc(description);
-      setShowMore("Show less");
+      setShowMore(t("Show less"));
     } else {
       setDesc(description.substring(0, 36).concat("..."));
-      setShowMore("Show more");
+      setShowMore(t("Show more"));
     }
   }
 
@@ -239,12 +287,21 @@ function Post({
                 optionsWrapper: styles.infoWraper,
               }}
             >
-              <MenuOption onSelect={viewProfileHandler} text="View profile" />
-              <Divider />
-              <MenuOption
-                onSelect={() => alert(`Removed friends`)}
-                text="Remove friend"
-              />
+              {navigation.getParent() && (
+                <>
+                  <MenuOption
+                    onSelect={viewProfileHandler}
+                    text={t("View profile")}
+                  />
+                  <Divider />
+                </>
+              )}
+              {isRemove && (
+                <MenuOption
+                  onSelect={removeFriendHandler}
+                  text={t("Remove friend")}
+                />
+              )}
             </MenuOptions>
           </Menu>
         </View>
@@ -295,7 +352,7 @@ function Post({
                     { color: Colors.primary100_30 },
                   ]}
                 >
-                  {showMore}
+                  {t(showMore)}
                 </Text>
               </Pressable>
             )}
@@ -363,7 +420,6 @@ const styles = StyleSheet.create({
   },
   info: {
     width: 200,
-    height: 100,
     backgroundColor: Colors.primary500,
     borderRadius: 20,
     marginTop: 40,

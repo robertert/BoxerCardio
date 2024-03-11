@@ -1,0 +1,16 @@
+{
+  "translation": {
+    "Error message": "There was an error! Please try again later.",
+    "userCtx.name send you an invitation to teamName training group.": "{{userName}} send you an invitation to {{teamName}} training group.",
+    "minute ago": "(1)[{{count}} minute ago];(2-inf)[{{count}} minutes ago]",
+    "hour ago": "(1)[{{count}} hour ago];(2-inf)[{{count}} hours ago]",
+    "days ago": "{{count}} days ago",
+    "week ago": "(1)[{{count}} week ago];(2-inf)[{{count}} weeks ago]",
+    "month ago": "(1)[{{count}} month ago];(2-inf)[{{count}} months ago]",
+    "year ago": "(1)[{{count}} year ago];(2-inf)[{{count}} years ago]",
+    "Replying to replyPerson.name":"Replying to @{{name}}",
+    "{counter} of 12": "{{counter}} of 12",
+    "You can only enter year between ${date.getFullYear() - 5} and ${date.getFullYear()}":"You can only enter year between {{start}} and {{end}}",
+    "${userCtx.name} send you a friend request.":"{{name}} send you a friend request."
+  }
+}

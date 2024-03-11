@@ -16,6 +16,7 @@ import { UserContext } from "../../../store/user-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Ionicons } from "@expo/vector-icons";
 import { doc, runTransaction } from "firebase/firestore";
+import { useTranslation } from "react-i18next";
 
 function MemberListItem({ item, isOwn, viewProfile, teamId }) {
   const [image, setImage] = useState();
@@ -23,6 +24,8 @@ function MemberListItem({ item, isOwn, viewProfile, teamId }) {
   const [isLoading, setIsLoading] = useState(false);
 
   const userCtx = useContext(UserContext);
+  
+  const {t} = useTranslation();  
 
   useEffect(() => {
     async function fetchPhoto() {
@@ -155,14 +158,14 @@ function MemberListItem({ item, isOwn, viewProfile, teamId }) {
             optionsWrapper: styles.infoWraper,
           }}
         >
-          <MenuOption onSelect={viewProfileHandler} text="View profile" />
+          <MenuOption onSelect={viewProfileHandler} text={t("View profile")} />
 
           {isOwner && item.id !== userCtx.id && (
             <>
               <Divider />
               <MenuOption
                 onSelect={makeLeaderHander}
-                text="Make the group leader"
+                text={t("Make the group leader")}
               />
               <Divider />
 
@@ -171,7 +174,7 @@ function MemberListItem({ item, isOwn, viewProfile, teamId }) {
                   optionText: styles.infoTextRed,
                 }}
                 onSelect={removeMemberHandler}
-                text="Remove from the team"
+                text={t("Remove from the team")}
               />
             </>
           )}

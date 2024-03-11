@@ -17,22 +17,32 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Ionicons } from "@expo/vector-icons";
 import { addDoc, collection, doc, runTransaction } from "firebase/firestore";
 import { Alert } from "react-native";
+import { useTranslation } from "react-i18next";
+import { ActivityIndicator } from "react-native-paper";
 
-function AddNewMemberFormItem({ item, viewProfile, teamId, teamName,setResults }) {
+function AddNewMemberFormItem({
+  item,
+  viewProfile,
+  teamId,
+  teamName,
+  teamShort,
+  setResults,
+}) {
   const [image, setImage] = useState();
+  const [isLoading, setIsLoading] = useState(false);
 
   const userCtx = useContext(UserContext);
 
+  const { t } = useTranslation();
+
   useEffect(() => {
     async function fetchPhoto() {
-      console.log(item.id);
       try {
         const url = await getDownloadURL(
           ref(storage, `users/${item.id}/photo.jpg`)
         );
         setImage(url);
       } catch (e) {
-        console.log(e);
         if (e.code === "storage/object-not-found") {
           try {
             const url = await getDownloadURL(
@@ -43,6 +53,8 @@ function AddNewMemberFormItem({ item, viewProfile, teamId, teamName,setResults }
           } catch (e) {
             console.log(e);
           }
+        } else {
+          console.log(e);
         }
       }
     }
@@ -54,6 +66,7 @@ function AddNewMemberFormItem({ item, viewProfile, teamId, teamName,setResults }
   }
 
   async function addMemberHandler() {
+    setIsLoading(true);
     try {
       //SEND NOTIFICATION
       await addDoc(collection(db, `users/${item.id}/notifications`), {
@@ -61,16 +74,26 @@ function AddNewMemberFormItem({ item, viewProfile, teamId, teamName,setResults }
         type: "groupInvitation",
         groupId: teamId,
         groupName: teamName,
+        groupShort: teamShort,
         userId: userCtx.id,
         name: userCtx.name,
         photoUrl: userCtx.photoUrl,
-        text: `${userCtx.name} send you an invitation to ${teamName} training group.`,
+        text: `userCtx.name send you an invitation to teamName training group.`,
       });
+      setIsLoading(false);
       setResults((prev) => prev.filter((pre) => pre.id !== item.id));
     } catch (e) {
       console.log(e);
-      Alert.alert("Error", "There was a problem. Try again later");
+      Alert.alert("Error", t("Error message"));
     }
+  }
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator color={Colors.accent500} size={"small"} />
+      </View>
+    );
   }
 
   return (
@@ -112,6 +135,16 @@ const styles = StyleSheet.create({
   infoWraper: {
     paddingHorizontal: 15,
     paddingVertical: 15,
+  },
+  loadingContainer: {
+    height: 60,
+    flexDirection: "row",
+    justifyContent: "center",
+    paddingHorizontal: 15,
+    marginVertical: 5,
+    borderColor: Colors.primary100_30,
+    alignItems: "center",
+    borderRadius: 25,
   },
   resultContainer: {
     height: 60,

@@ -8,23 +8,28 @@ import UserContextProvider from "./store/user-context";
 import CommentContextProvider from "./store/comment-context";
 import ShelfContextProvider from "./store/shelf-context";
 import SettingsContextProvider from "./store/settings-context";
+import "./i18next";
+import React from "react";
+import { AchievementContextProvider } from "./store/achivement-context";
 SplashScreen.preventAutoHideAsync();
 
 export default function App() {
   return (
     <SafeAreaProvider>
       <MenuProvider>
-        <SettingsContextProvider>
-          <ShelfContextProvider>
-            <UserContextProvider>
-              <CommentContextProvider>
-                <AuthContextProvider>
-                  <RootNavigation />
-                </AuthContextProvider>
-              </CommentContextProvider>
-            </UserContextProvider>
-          </ShelfContextProvider>
-        </SettingsContextProvider>
+        <AchievementContextProvider>
+          <SettingsContextProvider>
+            <ShelfContextProvider>
+              <UserContextProvider>
+                <CommentContextProvider>
+                  <AuthContextProvider>
+                    <RootNavigation />
+                  </AuthContextProvider>
+                </CommentContextProvider>
+              </UserContextProvider>
+            </ShelfContextProvider>
+          </SettingsContextProvider>
+        </AchievementContextProvider>
       </MenuProvider>
     </SafeAreaProvider>
   );

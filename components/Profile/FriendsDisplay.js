@@ -18,50 +18,12 @@ import { UserContext } from "../../store/user-context";
 import { db, storage } from "../../firebaseConfig";
 import { getDownloadURL, ref } from "firebase/storage";
 import FriendDisplay from "./FriendDisplay";
+import { useTranslation } from "react-i18next";
 
-const DUMMY_FRIENDS = [
-  {
-    id: 1,
-    name: "ROBERt",
-    photoUrl: "url",
-  },
-  {
-    id: 2,
-    name: "ROBERttttttttt",
-    photoUrl: "url",
-  },
-  {
-    id: 3,
-    name: "RO",
-    photoUrl: "url",
-  },
-  {
-    id: 4,
-    name: "ROB",
-    photoUrl: "url",
-  },
-  {
-    id: 5,
-    name: "ROBERt",
-    photoUrl: "url",
-  },
-  {
-    id: 6,
-    name: "ROBE",
-    photoUrl: "url",
-  },
-  {
-    id: 7,
-    name: "ROBER",
-    photoUrl: "url",
-  },
-];
-
-function FriendsDisplay({route}) {
+function FriendsDisplay({ route }) {
   const insets = useSafeAreaInsets();
 
   const navigation = useNavigation();
-
 
   const id = route.params.id;
 
@@ -70,10 +32,13 @@ function FriendsDisplay({route}) {
   const [friends, setFriends] = useState([]);
   const [refresh, setRefresh] = useState(false);
 
+  const userCtx = useContext(UserContext);
+
+  const {t} = useTranslation();
+
   useEffect(() => {
     fetchFriends();
   }, []);
-  
 
   async function fetchFriends() {
     setIsLoading(true);
@@ -90,7 +55,7 @@ function FriendsDisplay({route}) {
 
   function renderFriendHandler(itemData) {
     const item = itemData.item;
-    return <FriendDisplay item={item}/>
+    return <FriendDisplay item={item} />;
   }
 
   function goBackHandler() {
@@ -109,7 +74,7 @@ function FriendsDisplay({route}) {
           <Ionicons name="chevron-back" size={42} color="white" />
         </Pressable>
       </View>
-      <Text style={styles.titleText}>Friends</Text>
+      <Text style={styles.titleText}>{t("Friends")}</Text>
 
       <FlashList
         data={friends}
@@ -142,8 +107,7 @@ function FriendsDisplay({route}) {
             <View style={styles.footerContainer}>
               <Text style={styles.footerTextTitle}>Error</Text>
               <Text style={styles.footerText}>
-                There was an error while loading. Please check your internet
-                conection or try again later.
+                {t("Error message")}
               </Text>
             </View>
           )
@@ -151,7 +115,9 @@ function FriendsDisplay({route}) {
         ListEmptyComponent={
           !isLoading && (
             <Text style={styles.errorText}>
-              You don't have any friends yet.
+              {userCtx.id === id
+                ? t("You don't have any friends yet.")
+                : t("This user don't have any friends yet")}
             </Text>
           )
         }

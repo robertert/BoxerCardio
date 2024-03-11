@@ -1,4 +1,4 @@
-import { View, Text, Image, Pressable, StyleSheet } from "react-native";
+import { View, Text, Image, Pressable, StyleSheet, Alert } from "react-native";
 import Colors from "../constants/colors";
 import {
   Menu,
@@ -24,30 +24,9 @@ import { doc, getDoc } from "firebase/firestore";
 import { ActivityIndicator } from "react-native";
 import { useEffect } from "react";
 import { ref, getDownloadURL } from "firebase/storage";
+import { useTranslation } from "react-i18next";
 
-const DUMMY_USER = {
-  name: "Robert",
-  id: 1,
-  photoUrl: "url",
-  posts: [
-    {
-      id: 1,
-      miniatureUrl: "url",
-      score: 12,
-      mode: "3MIN",
-      createdAt: new Date(),
-    },
-  ],
-  friends: [
-    {
-      id: 3,
-      name: "mankowskae",
-      photoUrl: "url",
-    },
-  ],
-};
-
-function ProfileScreen() {
+function ProfileScreen({ isBack = false }) {
   const insets = useSafeAreaInsets();
 
   const navigation = useNavigation();
@@ -61,9 +40,15 @@ function ProfileScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState({});
 
+  const {t} = useTranslation();
+
   useEffect(() => {
     fetchUser();
   }, []);
+
+  function goBackHandler() {
+    navigation.goBack();
+  }
 
   async function fetchUser() {
     setIsLoading(true);
@@ -73,6 +58,7 @@ function ProfileScreen() {
       setUser(readyUser);
       setIsLoading(false);
     } catch (e) {
+      Alert.alert("Error",t("Error message"));
       console.log(e);
     }
     try {
@@ -102,7 +88,12 @@ function ProfileScreen() {
         { paddingTop: insets.top + 15, paddingBottom: insets.bottom },
       ]}
     >
-      <View style={styles.header}>
+      <View style={!isBack ? styles.header : styles.headerBack}>
+        {isBack && (
+          <Pressable onPress={goBackHandler}>
+            <Ionicons name="chevron-back" size={42} color="white" />
+          </Pressable>
+        )}
         <Menu>
           <MenuTrigger>
             <Entypo name="dots-three-vertical" size={30} color="white" />
@@ -116,26 +107,26 @@ function ProfileScreen() {
           >
             <MenuOption
               onSelect={() => navigation.navigate("edit-profile")}
-              text="Edit profile"
+              text={t("Edit profile")}
             />
             <Divider />
             <MenuOption
               onSelect={() => navigation.navigate("edit-shelf")}
-              text="Edit shelf"
+              text={t("Edit shelf")}
             />
             <Divider />
             <MenuOption
               onSelect={() =>
                 navigation.navigate("profile-stats", { id: userCtx.id })
               }
-              text="Stats"
+              text={t("Stats")}
             />
             <Divider />
             <MenuOption
               onSelect={() =>
                 navigation.navigate("friends-display", { id: userCtx.id })
               }
-              text="Friends"
+              text={t("Friends")}
             />
             <Divider />
             <MenuOption
@@ -147,7 +138,7 @@ function ProfileScreen() {
                 auth.signOut();
                 userCtx.delUser();
               }}
-              text="Log out"
+              text={t("Log out")}
             />
           </MenuOptions>
         </Menu>
@@ -167,7 +158,6 @@ function ProfileScreen() {
             >
               <Tab.Screen
                 name="posts"
-                component={PostsDisplay}
                 options={{
                   tabBarIcon: ({ focused }) => (
                     <Image
@@ -184,7 +174,9 @@ function ProfileScreen() {
                     />
                   ),
                 }}
-              />
+              >
+                {() => <PostsDisplay userId={userCtx.id} />}
+              </Tab.Screen>
               <Tab.Screen
                 name="charts"
                 component={ChartDisplay}
@@ -264,7 +256,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     paddingHorizontal: 20,
   },
-
+  headerBack: {
+    width: "100%",
+    justifyContent: "space-between",
+    flexDirection: "row",
+    paddingHorizontal: 20,
+    alignItems: "center",
+  },
   info: {
     width: 200,
     backgroundColor: Colors.primary500,

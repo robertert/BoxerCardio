@@ -5,11 +5,14 @@ import ButtonPrim from "../components/UI/ButtonPrim";
 import Colors from "../constants/colors";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "../firebaseConfig";
+import { useTranslation } from "react-i18next";
 
 function ResetPasswordScreen({ navigation }) {
   const [email, setEmail] = useState("");
   const [invalidEmail, setInvalidEmail] = useState(false);
   const [message,setMessage] = useState('');
+
+  const {t} = useTranslation();
 
   const emailChangeHandler = (enteredEmail) => {
     setMessage('');
@@ -23,10 +26,10 @@ function ResetPasswordScreen({ navigation }) {
       navigation.navigate("auth");
     } catch (error) {
         if(error.code === 'auth/invalid-email'){
-            setMessage('Invalid email');
+            setMessage(t("Invalid email"));
         }
         else{
-            setMessage("Try again later");
+            setMessage(t("Error message"));
         }
         //console.log(error.code);
     }
@@ -49,7 +52,7 @@ function ResetPasswordScreen({ navigation }) {
       />
       </View>
       <Text style={styles.invalidMessage}>{message}</Text>
-      <ButtonPrim text="Send" onPress={sendHandler} />
+      <ButtonPrim text={t("Send")} onPress={sendHandler} />
       </View>
     </View>
   );

@@ -5,12 +5,15 @@ import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { db } from "../../../firebaseConfig";
 import { useEffect, useState } from "react";
 import { ActivityIndicator } from "react-native";
+import { useTranslation } from "react-i18next";
 
 let responses = [];
 let parentIdd, grandparentId;
 
 function CommentList2({ postId, parentId, id, onHide, onReply, level }) {
   const [isLoading, setIsLoading] = useState(true);
+
+  const {t} = useTranslation();
   //console.log(level);
   function answerHideHandler() {
     onHide();
@@ -65,7 +68,7 @@ function CommentList2({ postId, parentId, id, onHide, onReply, level }) {
         })
       )}
       <Pressable onPress={answerHideHandler}>
-        <Text style={styles.footerText}>Hide answers</Text>
+        <Text style={styles.footerText}>{t("Hide answers")}</Text>
       </Pressable>
     </View>
   );

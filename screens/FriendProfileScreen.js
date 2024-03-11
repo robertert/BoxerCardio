@@ -5,6 +5,7 @@ import {
   Pressable,
   StyleSheet,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import Colors from "../constants/colors";
 import {
@@ -42,6 +43,8 @@ import { useEffect, useState } from "react";
 import { getDownloadURL, ref } from "firebase/storage";
 import { useContext } from "react";
 import { UserContext } from "../store/user-context";
+import { useTranslation } from "react-i18next";
+import ProfileScreen from "./ProfileScreen";
 
 const DUMMY_USER = {
   name: "Robert",
@@ -82,6 +85,8 @@ function FriendProfileScreen({ route }) {
   const [isIncoming, setIsIncoming] = useState(false);
 
   const userCtx = useContext(UserContext);
+  
+  const {t} = useTranslation();
 
   //FECHING DATA
 
@@ -89,6 +94,7 @@ function FriendProfileScreen({ route }) {
     getRemovePending();
     getUser();
   }, []);
+
 
   async function getRemovePending() {
     try {
@@ -108,6 +114,7 @@ function FriendProfileScreen({ route }) {
         setIsIncoming(true);
       }
     } catch (e) {
+      Alert.alert("Error",t("Error message"));
       console.log(e);
     }
   }
@@ -149,7 +156,7 @@ function FriendProfileScreen({ route }) {
         type: "friendInvitation",
         userId: userCtx.id,
         name: userCtx.name,
-        text: `${userCtx.name} send you a friend request.`,
+        text: "${userCtx.name} send you a friend request.",
         createTime: new Date(),
       });
       setIsPending(true);
@@ -181,6 +188,7 @@ function FriendProfileScreen({ route }) {
       setIsRemove(false);
       navigation.goBack();
     } catch (e) {
+      Alert.alert("Error",t("Error message"));
       console.log(e);
     }
   }
@@ -207,7 +215,6 @@ function FriendProfileScreen({ route }) {
             name: userCtx.name,
           })
         ) {
-          console.log("TEST");
           return;
         }
 
@@ -244,7 +251,7 @@ function FriendProfileScreen({ route }) {
           incoming: arrayRemove(id),
         });
         transaction.update(doc(db, `users/${id}`), {
-          incoming: arrayRemove(userCtx.id),
+          pending: arrayRemove(userCtx.id),
         });
 
         transaction.delete(
@@ -254,12 +261,16 @@ function FriendProfileScreen({ route }) {
       setIsIncoming(false);
       setIsRemove(true);
     } catch (e) {
+      Alert.alert("Error",t("Error message"))
       console.log(e);
     }
   }
 
   function goBackHandler() {
     navigation.goBack();
+  }
+  if(userCtx.id === id){
+    return <ProfileScreen isBack={true}/>
   }
 
   return (
@@ -296,21 +307,21 @@ function FriendProfileScreen({ route }) {
                   onSelect={() => {
                     alert(id);
                   }}
-                  text="Share"
+                  text={t("Share")}
                 />
                 <Divider />
                 <MenuOption
                   onSelect={() =>
                     navigation.navigate("profile-stats", { id: id })
                   }
-                  text="Stats"
+                  text={t("Stats")}
                 />
                 <Divider />
                 <MenuOption
                   onSelect={() =>
                     navigation.navigate("friends-display", { id: id })
                   }
-                  text="Friends"
+                  text={t("Friends")}
                 />
                 {isRemove && (
                   <>
@@ -320,14 +331,14 @@ function FriendProfileScreen({ route }) {
                         optionText: styles.infoTextRed,
                       }}
                       onSelect={removeFriendHandler}
-                      text="Remove friend"
+                      text={t("Remove friend")}
                     />
                   </>
                 )}
                 {!isRemove && !isPending && !isIncoming && (
                   <>
                     <Divider />
-                    <MenuOption onSelect={addFriendHandler} text="Add friend" />
+                    <MenuOption onSelect={addFriendHandler} text={t("Add friend")} />
                   </>
                 )}
                 {isIncoming && (
@@ -335,12 +346,12 @@ function FriendProfileScreen({ route }) {
                     <Divider />
                     <MenuOption
                       onSelect={acceptHandler}
-                      text="Accept friend invitation"
+                      text={t("Accept friend invitation")}
                     />
                   </>
                 )}
                 <Divider />
-                <MenuOption onSelect={() => {}} text="Report" />
+                <MenuOption onSelect={() => {}} text={t("Report")} />
               </MenuOptions>
             </Menu>
           </View>
@@ -357,7 +368,6 @@ function FriendProfileScreen({ route }) {
             >
               <Tab.Screen
                 name="posts"
-                component={PostsDisplay}
                 options={{
                   tabBarIcon: ({ focused }) => (
                     <Image
@@ -374,7 +384,9 @@ function FriendProfileScreen({ route }) {
                     />
                   ),
                 }}
-              />
+              >
+                {()=><PostsDisplay userId={id}/>}
+              </Tab.Screen>
               <Tab.Screen
                 name="charts"
                 component={ChartDisplay}

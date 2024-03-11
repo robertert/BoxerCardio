@@ -1,4 +1,4 @@
-import { View, Text, Image, StyleSheet, Pressable } from "react-native";
+import { View, Text, Image, StyleSheet, Pressable, Alert } from "react-native";
 import Colors from "../../constants/colors";
 import { useNavigation } from "@react-navigation/native";
 import { useContext, useState } from "react";
@@ -18,17 +18,19 @@ import { db, storage } from "../../firebaseConfig";
 import { UserContext } from "../../store/user-context";
 import { useEffect } from "react";
 import { getDownloadURL, ref } from "firebase/storage";
+import { useTranslation } from "react-i18next";
+import { ActivityIndicator } from "react-native-paper";
 
 function Notification({
   type,
-  text,
+  gotText,
   userId,
   userName,
   id,
   groupId,
   name,
   groupName,
-  groupPhotoUrl,
+  groupShort,
   createDate,
 }) {
   const navigation = useNavigation();
@@ -36,8 +38,20 @@ function Notification({
   const [isVisible, setIsVisible] = useState(true);
   const [image, setImage] = useState();
   const [time, setTime] = useState("");
+  const [text, setText] = useState(gotText);
+  const [isLoading, setIsLoading] = useState(false);
 
   const userCtx = useContext(UserContext);
+
+  const { t } = useTranslation();
+
+  function translateText() {
+    if (type === "groupInvitation") {
+      setText(t(gotText, { userName: userName, teamName: groupName }));
+    } else if (type === "friendInvitation") {
+      setText(t(gotText, { name: userName }));
+    }
+  }
 
   useEffect(() => {
     async function fetchPhoto() {
@@ -65,42 +79,46 @@ function Notification({
       const creationDate = createDate?.toDate();
       const timeDifference =
         (new Date().getTime() - creationDate?.getTime()) / 1000;
+      if (isNaN(timeDifference)) {
+        setTime("");
+        return;
+      }
       if (timeDifference < 60) {
-        setTime("just now");
+        setTime(t("just now"));
       } else if (timeDifference >= 60 && timeDifference / 60 < 60) {
         const mins = Math.floor(timeDifference / 60);
         if (mins === 1) {
-          setTime(`1 minute ago`);
+          setTime(t(`minute ago`, { postProcess: "interval", count: 1 }));
         } else {
-          setTime(`${mins} minutes ago`);
+          setTime(t(`minute ago`, { postProcess: "interval", count: mins }));
         }
       } else if (timeDifference / 60 >= 60 && timeDifference / (60 * 60) < 24) {
         const hours = Math.floor(timeDifference / (60 * 60));
         if (hours === 1) {
-          setTime(`1 hour ago`);
+          setTime(t(`hour ago`, { postProcess: "interval", count: 1 }));
         } else {
-          setTime(`${hours} hours ago`);
+          setTime(t(`hour ago`, { postProcess: "interval", count: hours }));
         }
       } else if (
         timeDifference / (60 * 60) >= 24 &&
         timeDifference / (60 * 60 * 24) < 2
       ) {
-        setTime("yesterday");
+        setTime(t("yesterday"));
       } else if (
         timeDifference / (60 * 60 * 24) >= 2 &&
         timeDifference / (60 * 60 * 24) < 7
       ) {
         const days = Math.floor(timeDifference / (60 * 60 * 24));
-        setTime(`${days} days ago`);
+        setTime(t(`days ago`, { postProcess: "interval", count: days }));
       } else if (
         timeDifference / (60 * 60 * 24) >= 7 &&
         timeDifference / (60 * 60 * 24) < 30
       ) {
         const weeks = Math.floor(timeDifference / (60 * 60 * 24 * 7));
         if (weeks === 1) {
-          setTime("1 week ago");
+          setTime(t(`week ago`, { postProcess: "interval", count: 1 }));
         } else {
-          setTime(`${weeks} weeks ago`);
+          setTime(t(`week ago`, { postProcess: "interval", count: weeks }));
         }
       } else if (
         timeDifference / (60 * 60 * 24) >= 30 &&
@@ -108,28 +126,33 @@ function Notification({
       ) {
         const months = Math.floor(timeDifference / (60 * 60 * 24 * 30));
         if (months === 1) {
-          setTime("1 months ago");
+          setTime(t(`month ago`, { postProcess: "interval", count: 1 }));
         } else {
-          setTime(`${months} month ago`);
+          setTime(t(`month ago`, { postProcess: "interval", count: months }));
         }
       } else {
         const years = Math.floor(timeDifference / (60 * 60 * 24 * 365));
         if (years === 1) {
-          setTime("1 year ago");
+          setTime(t(`year ago`, { postProcess: "interval", count: 1 }));
         } else {
-          setTime(`${years} years ago`);
+          setTime(t(`year ago`, { postProcess: "interval", count: years }));
         }
       }
     }
     fetchTime();
     fetchPhoto();
+    translateText();
   }, []);
 
   async function acceptHandler() {
+    setIsLoading(true);
     try {
       if (type === "groupInvitation") {
         const data = await getDoc(doc(db, `users/${userCtx.id}`));
-        if (data.data().trainingGroups.filter((group) => group.id===groupId).length > 0) {
+        if (
+          data.data().trainingGroups.filter((group) => group.id === groupId)
+            .length > 0
+        ) {
           deleteDoc(doc(db, `users/${userCtx.id}/notifications/${id}`));
           setIsVisible(false);
           return;
@@ -171,6 +194,7 @@ function Notification({
               {
                 id: groupId,
                 name: groupName,
+                tag: groupShort.slice(0, 4),
               },
             ],
             permissions: readyPermissions,
@@ -188,7 +212,6 @@ function Notification({
           let czy = false;
           data1.data().friends.forEach((friend) => {
             if (friend.id === userCtx.id) {
-              console.log("TEST");
               czy = true;
             }
           });
@@ -198,7 +221,7 @@ function Notification({
               ...data.data().friends,
               {
                 id: userId,
-                name: name,
+                name: userName,
               },
             ],
           });
@@ -215,15 +238,17 @@ function Notification({
             incoming: arrayRemove(userId),
           });
           transaction.update(doc(db, `users/${userId}`), {
-            incoming: arrayRemove(userCtx.id),
+            pending: arrayRemove(userCtx.id),
           });
           transaction.delete(
             doc(db, `users/${userCtx.id}/notifications/${id}`)
           );
         });
+        setIsLoading(false);
         setIsVisible(false);
       }
     } catch (e) {
+      Alert.alert("Error", t("Error message"));
       console.log(e);
     }
   }
@@ -241,6 +266,14 @@ function Notification({
     navigation.navigate("friend-profile", { id: userId });
   }
 
+  if (isLoading) {
+    return (
+      <View style={[styles.root, !isVisible && { display: "none" }]}>
+        <ActivityIndicator size={"small"} color={Colors.accent500} />
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.root, !isVisible && { display: "none" }]}>
       <View style={styles.inner}>
@@ -253,12 +286,12 @@ function Notification({
             <View style={styles.buttonsContainer}>
               <Pressable onPress={acceptHandler}>
                 <View style={styles.button}>
-                  <Text style={styles.buttonText}>Accept</Text>
+                  <Text style={styles.buttonText}>{t("Accept")}</Text>
                 </View>
               </Pressable>
               <Pressable onPress={denyHandler}>
                 <View style={styles.button}>
-                  <Text style={styles.buttonText}>Deny</Text>
+                  <Text style={styles.buttonText}>{t("Deny")}</Text>
                 </View>
               </Pressable>
             </View>
