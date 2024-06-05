@@ -21,14 +21,14 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.anonymous.BoxerCardio"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "expo": {
       "plugins": [
-        "react-native-nfc-manager",
         "expo-camera",
         {
           "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera."
@@ -41,6 +41,11 @@
     },
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "4a58b88f-29b5-416a-98d6-62b268ea011a"
+      }
+    }
   }
 }

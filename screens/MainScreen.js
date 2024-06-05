@@ -1,4 +1,10 @@
-import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  FlatList,
+} from "react-native";
 import { auth } from "../firebaseConfig";
 import Header from "../components/UI/Header";
 import Colors from "../constants/colors";
@@ -13,14 +19,18 @@ import {
   startAfter,
   orderBy,
   query,
+  getDoc,
+  doc,
+  where,
 } from "firebase/firestore";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import Share from "../components/MainScreen/Share";
 import GestureRecognizer from "react-native-swipe-gestures";
 import { useTranslation } from "react-i18next";
 import { useFocusEffect } from "@react-navigation/native";
+import { UserContext } from "../store/user-context";
 
-function MainScreen({ navigation,route }) {
+function MainScreen({ navigation, route }) {
   //  przy ponownym nacisnieciu scroll to the top //////////////////////////////////////////
   const ref = useRef();
   useEffect(() => {
@@ -43,11 +53,16 @@ function MainScreen({ navigation,route }) {
   const [posts, setPosts] = useState([]);
   const [isFirstLoading, setIsFirstLoading] = useState(true);
   const [hasNextPage, setHasNextPage] = useState(false);
+  const [allPosts, setAllPosts] = useState([]);
+  const [index, setIndex] = useState(0);
 
-  const {t} = useTranslation();
+  const { t } = useTranslation();
+
+  const userCtx = useContext(UserContext);
+
+  const id = route.params.id;
 
   ////// ALL HANDLERS ////////////////////////////////////////////////////////////////////
-
 
   function shareHandler() {
     setFooter(true);
@@ -57,7 +72,6 @@ function MainScreen({ navigation,route }) {
     setFooter(false);
     //animate disapearing
   }
-
   function renderListHandler(itemData) {
     const item = itemData.item;
     return (
@@ -85,12 +99,48 @@ function MainScreen({ navigation,route }) {
     setLastDoc({});
     setIsFirstLoading(true);
     try {
-      const posts = await getDocs(
+      let prePosts = [];
+      const data = await getDoc(doc(db, `users/${id}`));
+      const friends = data.data()?.friends;
+      const date3DaysAgo = new Date(Date.now() - 3 * 24 * 3600 * 1000);
+      for (const friend of friends) {
+        const friendData = await getDocs(
+          query(
+            collection(db, `users/${friend.id}/posts`)
+            //where("createdAt", ">", date3DaysAgo)
+          )
+        );
+        prePosts.push(
+          ...friendData.docs.map((doc) => {
+            return { id: doc.id, ...doc.data() };
+          })
+        );
+      }
+      const userData = await getDocs(
         query(
-          collection(db, "posts"),
-          orderBy("userName"),
-          limit(10)
+          collection(db, `users/${id}/posts`)
+          //where("createdAt", ">", date3DaysAgo)
         )
+      );
+      prePosts.push(
+        ...userData.docs.map((doc) => {
+          return { id: doc.id, ...doc.data() };
+        })
+      );
+      prePosts.sort((item1, item2) => {
+        return item2.createdAt - item1.createdAt;
+      }),
+      setAllPosts(prePosts);
+      let current = [];
+      for (let i = 0; i < 5; i++) {
+        current.push(prePosts[i]);
+      }
+      setPosts(current);
+      setIndex(4);
+      setIsFirstLoading(false);
+      /*
+      const posts = await getDocs(
+        query(collection(db, "posts"), orderBy("userName"), limit(10))
       );
       const lastD = posts.docs[posts.docs.length - 1];
       setLastDoc(lastD);
@@ -108,13 +158,23 @@ function MainScreen({ navigation,route }) {
       }
       setIsFirstLoading(false);
       setPosts([...readyPosts]);
+      */
     } catch (e) {
       console.log(e);
-      setIsErrorRender(true); 
+      setIsErrorRender(true);
     }
   }
 
   async function loadNextPage() {
+    let current = [];
+    for (let i = index + 1; i < index + 6; i++) {
+      if (i <= allPosts.length - 1) {
+        current.push(allPosts[i]);
+      }
+    }
+    setPosts((prev) => [...prev, ...current]);
+    setIndex((prev) => prev + 5);
+    /*
     if (hasNextPage) {
       setIsLoading(true);
       try {
@@ -123,7 +183,7 @@ function MainScreen({ navigation,route }) {
             collection(db, "posts"),
             orderBy("userName"),
             startAfter(lastDoc),
-            limit(10) 
+            limit(10)
           )
         );
         const lastD = posts.docs[posts.docs.length - 1];
@@ -146,12 +206,17 @@ function MainScreen({ navigation,route }) {
         setIsErrorRender(true);
       }
     }
+    */
   }
 
-
-  useFocusEffect(useCallback(()=>{
-    initialFetchPosts();
-  },[]))
+  useFocusEffect(
+    useCallback(() => {
+      if (userCtx.mainPageRender) {
+        initialFetchPosts();
+      }
+      userCtx.changeMain(false);
+    }, [userCtx.mainPageRender])
+  );
 
   ///////////////////////////////////////////////////////////////////////////////////////
 
@@ -159,13 +224,12 @@ function MainScreen({ navigation,route }) {
     <View style={styles.root}>
       <Header settings={true} back={false} />
       {!isFirstLoading ? (
-        <FlashList
+        <FlatList
           ref={ref}
           extraData={posts}
           data={posts}
           renderItem={renderListHandler}
           keyExtractor={(item) => item.id}
-          estimatedItemSize={330}
           onEndReachedThreshold={0.5}
           onEndReached={loadNextPage}
           refreshing={refresh}
@@ -174,8 +238,7 @@ function MainScreen({ navigation,route }) {
               setIsErrorRender(false);
               setRefresh(true);
               setPosts([]);
-              loadNextPage();
-              //initialFetchPosts();
+              initialFetchPosts();
               setRefresh(false);
             } catch (e) {
               console.log(e);
@@ -206,9 +269,7 @@ function MainScreen({ navigation,route }) {
             ) : (
               <View style={styles.footerContainer}>
                 <Text style={styles.footerTextTitle}>Error</Text>
-                <Text style={styles.footerText}>
-                  {t("Error message")}
-                </Text>
+                <Text style={styles.footerText}>{t("Error message")}</Text>
               </View>
             )
           }

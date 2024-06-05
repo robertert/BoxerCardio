@@ -4,7 +4,7 @@ export const SettingsContext = createContext({
   laguage: "en",
   permissions: [],
   allowNotifications: true,
-  getSettings: (language,isAllowedNotifications) => {},
+  getSettings: (isAllowedNotifications,gotLanguage) => {},
   getPermissions: (permissions) => {},
 });
 
@@ -13,7 +13,7 @@ function SettingsContextProvider({ children }) {
   const [language, setLanguage] = useState("en");
   const [allowNotifications,setAllowNotifications] = useState(true);
 
-  function getSettings(gotLanguage,isAllowedNotifications) {
+  function getSettings(isAllowedNotifications,gotLanguage) {
     setAllowNotifications(isAllowedNotifications)
     setLanguage(gotLanguage);
   }

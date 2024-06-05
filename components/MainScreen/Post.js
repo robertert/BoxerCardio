@@ -129,7 +129,6 @@ function Post({
         const url = await getDownloadURL(ref(storage, `posts/${id}/photo.jpg`));
         setPostImage(url);
       } catch (e) {
-        console.log(e);
         if (e.code === "storage/object-not-found") {
           try {
             const url = await getDownloadURL(

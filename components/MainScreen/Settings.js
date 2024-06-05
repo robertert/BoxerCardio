@@ -70,7 +70,7 @@ function Settings() {
 
   async function savePressHandler() {
     i18n.changeLanguage(language);
-    settingsCtx.getSettings(language, isAllowedNotifications);
+    settingsCtx.getSettings(isAllowedNotifications,language);
     try {
       await updateDoc(doc(db, `users/${userCtx.id}`), {
         settings: {
@@ -78,6 +78,7 @@ function Settings() {
           allowNotifications: isAllowedNotifications,
         },
       });
+      userCtx.changeMain(true);
       navigation.navigate("mainPage",{refresh: true})
     } catch (e) {
       Alert.alert("Error", t("Error message"));

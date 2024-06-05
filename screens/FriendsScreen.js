@@ -95,6 +95,7 @@ function FriendsScreen() {
     } else if (timeRange === "Today") {
       date = dayMonthYear;
     }
+    //NA ODWROT FECHUJE MIEJSCE
     try {
       setIsFirstLoading(true);
       const friends = (await getDoc(doc(db, `users/${userCtx.id}`))).data()
@@ -120,6 +121,14 @@ function FriendsScreen() {
             }
           )
         ).data.rank;
+        if (timeModes.filter((modes) => modes === mode)) {
+          const playersNum = (
+            await getDocs(
+              collection(db, `/leaderboards/${mode}/dates/${date}/players`)
+            )
+          ).docs.length;
+          rank = playersNum + 1 - rank;
+        }
       } else {
         rank = "-";
         const userDataFetch = await getDocs(
@@ -142,22 +151,7 @@ function FriendsScreen() {
         return;
       }
       if (group === "Friends") {
-        const d = data.docs.filter((doc) => {
-          let czy = false;
-          friends.forEach((friend) => {
-            if (friend.id == doc.data().user) {
-              czy = true;
-            }
-          });
-          return czy;
-        });
-
-        setLeaderboard(
-          d.map((doc) => {
-            doc = { ...doc.data(), rank: rank };
-            return doc;
-          })
-        );
+        setGroup("Everyone");
       } else {
         setLeaderboard(
           data.docs.map((doc) => {
@@ -473,15 +467,19 @@ function FriendsScreen() {
             </Menu>
           </View>
         </View>
-        <View style={styles.searchContainer}>
-          <TextInput
-            autoCapitalize="none"
-            onChangeText={searchHandler}
-            style={styles.input}
-            placeholder={t("Search")}
-            value={search}
-          />
-        </View>
+        {group === "Everyone" ? (
+          <View style={styles.searchContainer}>
+            <TextInput
+              autoCapitalize="none"
+              onChangeText={searchHandler}
+              style={styles.input}
+              placeholder={t("Search")}
+              value={search}
+            />
+          </View>
+        ):(
+          <View style={{marginVertical: 15}}/>
+        )}
         <View style={styles.leaderboardContainer}>
           {!isFirstLoading ? (
             <FlashList

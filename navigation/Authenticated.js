@@ -1,6 +1,6 @@
 import MainScreen from "../screens/MainScreen";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Ionicons,Entypo } from "@expo/vector-icons";
+import { Ionicons, Entypo } from "@expo/vector-icons";
 import Colors from "../constants/colors";
 import { View, StyleSheet } from "react-native";
 import FriendsScreen from "../screens/FriendsScreen";
@@ -12,7 +12,8 @@ import { Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 const Tab = createBottomTabNavigator();
 
-function Authenticated() {
+function Authenticated({ route }) {
+  const id = route.params.id;
   const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator
@@ -23,25 +24,32 @@ function Authenticated() {
         tabBarInactiveTintColor: Colors.primary100_30,
         tabBarShowLabel: false,
         tabBarBackground: () => (
-          <View style={[styles.tabBar,{height: insets.bottom+70,paddingBottom: insets.bottom}]}>
+          <View
+            style={[
+              styles.tabBar,
+              { height: insets.bottom + 70, paddingBottom: insets.bottom },
+            ]}
+          >
             <View style={styles.tabBarInner} />
           </View>
         ),
         tabBarStyle: {
-          marginBottom: Platform.OS !== "android" ? insets.bottom-8: insets.bottom,
+          marginBottom:
+            Platform.OS !== "android" ? insets.bottom - 8 : insets.bottom,
           height: 70,
           alignItems: "center",
           justifyContent: "center",
           borderTopWidth: 0,
         },
         tabBarIconStyle: {
-          paddingBottom: Platform.OS === "android" && 30
-        }
+          paddingBottom: Platform.OS === "android" && 30,
+        },
       }}
     >
       <Tab.Screen
         name="home"
         component={MainScreen}
+        initialParams={{ id: id }}
         options={{
           tabBarIcon: ({ focused, color }) => (
             <View
@@ -64,10 +72,10 @@ function Authenticated() {
             </View>
           ),
         }}
-        listeners={({ navigation}) => ({
+        listeners={({ navigation }) => ({
           tabPress: (e) => {
             e.preventDefault();
-            navigation.navigate('home');
+            navigation.navigate("home");
           },
         })}
       />

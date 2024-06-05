@@ -37,7 +37,7 @@ function LeaderboardItem({ userId, name, score, photoUrl, rank, type }) {
         if (Math.floor((score % 3600) / 60) === 0) {
           min = "00";
         } else {
-          min = Math.floor((score % 3600) / 60);
+          min = `0${Math.floor((score % 3600) / 60)}`;
         }
         if (score % 60 === 0) {
           sec = "00";
@@ -61,7 +61,6 @@ function LeaderboardItem({ userId, name, score, photoUrl, rank, type }) {
         );
         setImage(url);
       } catch (e) {
-        console.log(e);
         if (e.code === "storage/object-not-found") {
           try {
             const url = await getDownloadURL(

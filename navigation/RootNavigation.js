@@ -2,7 +2,7 @@ import { auth, db } from "../firebaseConfig";
 import { StatusBar } from "expo-status-bar";
 import { StyleSheet } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
-import { useEffect, useContext } from "react";
+import { useEffect, useContext, useState } from "react";
 import { AuthContext } from "../store/auth-context";
 import AuthStack from "./AuthStack";
 import Colors from "../constants/colors";
@@ -19,27 +19,39 @@ function RootNavigation() {
   const userCtx = useContext(UserContext);
   const settingsCtx = useContext(SettingsContext);
 
-  const {i18n} = useTranslation();
+  const { i18n } = useTranslation();
 
+  const [id, setId] = useState();
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    auth.onAuthStateChanged((user) => {
+    auth.onAuthStateChanged(async (user) => {
+      setIsLoading(true);
       async function auth() {
-        const userDb = await getDocs(
-          query(collection(db, `users`), where("email", "==", user.email))
-        );
-        const gotUser = { id: userDb.docs[0].id, ...userDb.docs[0].data() };
-        userCtx.getUser(gotUser.name, gotUser.photoUrl, gotUser.id);
-        settingsCtx.getPermissions(gotUser.permissions);
-        settingsCtx.getSettings(...gotUser.settings);
-        i18n.changeLanguage(gotUser.settings.language);
+        try {
+          const userDb = await getDocs(
+            query(collection(db, `users`), where("email", "==", user.email))
+          );
+          const gotUser = {
+            id: userDb.docs[0].id,
+            ...userDb.docs[0].data(),
+          };
+          setId(gotUser.id);
+          userCtx.getUser(gotUser.name, "", gotUser.id);
+          settingsCtx.getPermissions(gotUser.permissions);
+          settingsCtx.getSettings(gotUser.settings.allowNotifications,gotUser.settings.language);
+          i18n.changeLanguage(gotUser.settings.language);
+        } catch (e) {
+          console.log(e);
+        }
       }
       if (user) {
+        await auth();
         authCtx.authenticate(user.stsTokenManager.accessToken);
-        auth();
       } else {
         authCtx.logout();
       }
+      setIsLoading(false);
     });
   }, []);
 
@@ -47,9 +59,12 @@ function RootNavigation() {
     <View style={styles.root}>
       <NavigationContainer>
         <StatusBar style="light" />
-
-        {authCtx.isAuth && <MainStack />}
-        {!authCtx.isAuth && <AuthStack />}
+        {!isLoading && (
+          <>
+            {authCtx.isAuth && <MainStack id={id} />}
+            {!authCtx.isAuth && <AuthStack />}
+          </>
+        )}
       </NavigationContainer>
     </View>
   );

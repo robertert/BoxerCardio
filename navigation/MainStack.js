@@ -21,14 +21,15 @@ import Settings from "../components/MainScreen/Settings";
 import MemberList from "../components/Friends/TrainingGroups/MemberList";
 import AchivementModal from "../components/UI/AchievementModal";
 import { View } from "react-native";
+import { useEffect } from "react";
 
 const Stack = createNativeStackNavigator();
 
-function MainStack() {
+function MainStack({id}) {
   return (
     <View style={{flex: 1,justifyContent: "flex-end"}}>
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="mainPage" component={Authenticated} />
+      <Stack.Screen name="mainPage" component={Authenticated} initialParams={{id: id}}/>
       <Stack.Screen name="reset-password" component={ResetPasswordScreen}/>
       <Stack.Screen name="comment" component={Comment} />
       <Stack.Screen name="training-groups" component={TrainingGroups}/>

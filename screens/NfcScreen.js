@@ -1,5 +1,5 @@
 import { View, StyleSheet, Pressable, Text, Alert } from "react-native";
-import Colors from "../constants/colors";
+import Colors, { timeModes } from "../constants/colors";
 import {
   addDoc,
   arrayUnion,
@@ -91,8 +91,8 @@ function NfcScreen() {
   }
 
   function connectHandler() {
-    //createPost();
-    checkAchivements();
+    createPost();
+    //checkAchivements();
   }
 
   async function createPost() {
@@ -115,6 +115,7 @@ function NfcScreen() {
       const userData = await getDoc(doc(db, `users/${userCtx.id}`));
       const mode = data.mode;
       const score = data.score;
+      const desc = timeModes.filter((mod) => mod === mode).length > 0;
 
       //EVERYONE/////////////////////////////////////////////////////////////////////
       //
@@ -144,7 +145,10 @@ function NfcScreen() {
         );
         //console.log(result.status);
         //console.log(result.data);
-      } else if (mainDoc.data().score < score) {
+      } else if (
+        (!desc && mainDoc.data().score < score) ||
+        (desc && mainDoc.data().score > score)
+      ) {
         promises.push(
           axios.post(
             "https://us-central1-boxerapp-beb5c.cloudfunctions.net/updateScore",
@@ -160,8 +164,6 @@ function NfcScreen() {
             }
           )
         );
-        //console.log(result.status);
-        //console.log(result.data);
       }
       //
       //MONTH
@@ -187,7 +189,10 @@ function NfcScreen() {
         );
         //console.log(result.status);
         //console.log(result.data);
-      } else if (mainDoc2.data().score < score) {
+      } else if (
+        (!desc && mainDoc2.data().score < score) ||
+        (desc && mainDoc2.data().score > score)
+      ) {
         promises.push(
           axios.post(
             "https://us-central1-boxerapp-beb5c.cloudfunctions.net/updateScore",
@@ -230,7 +235,10 @@ function NfcScreen() {
         );
         //console.log(result.status);
         //console.log(result.data);
-      } else if (mainDoc3.data().score < score) {
+      } else if (
+        (!desc && mainDoc3.data().score < score) ||
+        (desc && mainDoc3.data().score > score)
+      ) {
         promises.push(
           axios.post(
             "https://us-central1-boxerapp-beb5c.cloudfunctions.net/updateScore",
@@ -280,7 +288,10 @@ function NfcScreen() {
           );
           //console.log(result.status);
           //console.log(result.data);
-        } else if (mainDoc.data().score < score) {
+        } else if (
+          (!desc && mainDoc.data().score < score) ||
+          (desc && mainDoc.data().score > score)
+        ) {
           promises.push(
             axios.post(
               "https://us-central1-boxerapp-beb5c.cloudfunctions.net/updateScore",
@@ -326,7 +337,10 @@ function NfcScreen() {
           );
           //console.log(result.status);
           //console.log(result.data);
-        } else if (mainDoc2.data().score < score) {
+        } else if (
+          (!desc && mainDoc2.data().score < score) ||
+          (desc && mainDoc2.data().score > score)
+        ) {
           promises.push(
             axios.post(
               "https://us-central1-boxerapp-beb5c.cloudfunctions.net/updateScore",
@@ -372,7 +386,10 @@ function NfcScreen() {
           );
           //console.log(result.status);
           //console.log(result.data);
-        } else if (mainDoc3.data().score < score) {
+        } else if (
+          (!desc && mainDoc3.data().score < score) ||
+          (desc && mainDoc3.data().score > score)
+        ) {
           promises.push(
             axios.post(
               "https://us-central1-boxerapp-beb5c.cloudfunctions.net/updateScore",
@@ -429,7 +446,6 @@ function NfcScreen() {
             postsPreview: [uid, ...postsPreview],
           });
         });
-
         ///ALL TIME STATS /////////////////////////////////////////////////////////////
         const userStatsAllTime = await transaction.get(
           doc(db, `users/${userCtx.id}/stats/AllTime`)
@@ -441,17 +457,17 @@ function NfcScreen() {
           });
         }
         const timeSpent = newStats.timeSpent
-          ? userStatsAllTime.data().timeSpent
+          ? newStats.timeSpent
           : 0;
         const punches = newStats.punches ? userStatsAllTime.data().punches : 0;
         const sessionsNum = newStats.sessionsNum
-          ? userStatsAllTime.data().sessionsNum
+          ? newStats.sessionsNum
           : 0;
         const highScore = newStats[mode]?.Highest
-          ? userStatsAllTime.data()[mode].Highest
+          ? newStats[mode].Highest
           : 0;
         const avarageScore = newStats[mode]?.Avarage
-          ? userStatsAllTime.data()[mode].Avarage
+          ? newStats[mode].Avarage
           : 0;
 
         newStats.timeSpent = timeSpent + data.time;
@@ -467,6 +483,7 @@ function NfcScreen() {
             ...newStats,
           });
         });
+
         ///YEAR ////////////////////////////////////////////////////
         const userStatsYear = await transaction.get(
           doc(db, `users/${userCtx.id}/stats/${year}`)
@@ -506,11 +523,14 @@ function NfcScreen() {
             ...newStatsYear,
           });
         });
+
         //MONTH///////////////////////////////////////////////////
         const userStatsMonth = await transaction.get(
           doc(db, `users/${userCtx.id}/stats/${monthYear}`)
         );
-        const newStatsMonth = userStatsYear.data() ? userStatsMonth.data() : {};
+        const newStatsMonth = userStatsMonth.data()
+          ? userStatsMonth.data()
+          : {};
         if (!userStatsMonth.exists()) {
           pendingWrites.push((t) => {
             t.set(doc(db, `users/${userCtx.id}/stats/${monthYear}`), {});
@@ -543,6 +563,7 @@ function NfcScreen() {
             ...newStatsMonth,
           });
         });
+
         //DAY////////////////////////////////////////////////////////////////////
         const userStatsDay = await transaction.get(
           doc(db, `users/${userCtx.id}/stats/${dayMonthYear}`)
@@ -562,7 +583,7 @@ function NfcScreen() {
           ? newStatsDay[mode].Highest
           : 0;
         const avarageScoreD = newStatsDay[mode]?.Avarage
-          ? newStatsDay.data()[mode].Avarage
+          ? newStatsDay[mode].Avarage
           : 0;
 
         newStatsDay.timeSpent = timeSpentD + data.time;
