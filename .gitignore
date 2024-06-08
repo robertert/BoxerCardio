@@ -15,6 +15,7 @@ web-build/
 # macOS
 .DS_Store
 
+#firebase
 firebaseConfig.js
 
 # Temporary files created by Metro to check the health of the file watcher
